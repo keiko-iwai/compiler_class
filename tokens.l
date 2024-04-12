@@ -14,12 +14,12 @@
 [0-9]+\.[0-9]*          SAVE_TOKEN; return TDOUBLE;
 [0-9]+                  SAVE_TOKEN; return TINTEGER;
 "="                     return TOKEN(TEQUAL);
-"=="                    return TOKEN(TCEQ);
-"!="                    return TOKEN(TCNE);
-"<"                     return TOKEN(TCLT);
-"<="                    return TOKEN(TCLE);
-">"                     return TOKEN(TCGT);
-">="                    return TOKEN(TCGE);
+"=="                    SAVE_TOKEN; return TCEQ;
+"!="                    SAVE_TOKEN; return TCNE;
+"<"                     SAVE_TOKEN; return TCLT;
+"<="                    SAVE_TOKEN; return TCLE;
+">"                     SAVE_TOKEN; return TCGT;
+">="                    SAVE_TOKEN; return TCGE;
 "("                     return TOKEN(TLPAREN);
 ")"                     return TOKEN(TRPAREN);
 "{"                     return TOKEN(TLBRACE);

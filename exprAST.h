@@ -1,4 +1,6 @@
 #include <iostream>
+#include <memory>
+namespace {
 
 class ExprAST {
 public:
@@ -18,3 +20,14 @@ class DoubleExprAST : public ExprAST {
 public:
     DoubleExprAST(double Val) : Val(Val) { std::cout << "Double parsed" << std::endl; }
 };
+
+class BinaryExprAST : public ExprAST {
+  std::string Op;
+  ExprAST *LHS, *RHS;
+
+public:
+  BinaryExprAST(std::string Op, ExprAST *LHS, ExprAST *RHS)
+      : Op(Op), LHS(LHS), RHS(RHS) { std::cout << "Expression parsed " << Op << std::endl; }
+};
+
+}
