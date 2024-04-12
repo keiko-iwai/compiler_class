@@ -6,7 +6,6 @@
 %}
 
 %union {
-    StatementExprAST *stmt;
     ExprAST *expr;
     std::string *string;
     int token;
@@ -49,13 +48,13 @@ stmts : stmt {  }
 stmt : expr { }
      ;
 
-numeric : TINTEGER { }
-        | TDOUBLE  { }
+numeric : TINTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
+        | TDOUBLE  { $$ = new DoubleExprAST(atol($1->c_str())); delete $1;  }
         ;
-    
-expr : numeric
-     | expr comparison_op expr {  }
-     | expr numeric_op expr {  }
+
+expr : numeric /*defined*/
+     | expr comparison_op expr {  /*binary op*/ }
+     | expr numeric_op expr {  /*binary op*/ }
      | TLPAREN expr TRPAREN {  }
      ;
 
