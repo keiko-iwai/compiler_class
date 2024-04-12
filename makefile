@@ -10,4 +10,4 @@ parser.cpp:
 	bison -d -o parser.cpp parser.y
 
 clean:
-	rm tokens.cpp parser.cpp parser.hpp *.o
+	rm tokens.cpp parser.cpp parser.hpp

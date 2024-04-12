@@ -2,7 +2,7 @@
     #include <cstdio>
     #include "exprAST.h"
     extern int yylex();
-    void yyerror(const char *s) { printf("ERROR: %sn", s); }
+    void yyerror(const char *s) { printf("[Bison] ERROR: %s\n", s); }
 %}
 
 %union {
