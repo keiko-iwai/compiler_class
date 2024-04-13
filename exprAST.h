@@ -77,6 +77,18 @@ public:
     }
 };
 
+class AssignmentAST : public ExprAST {
+public:
+    IdentifierExprAST &LHS;
+    ExprAST &RHS;
+    AssignmentAST(IdentifierExprAST &LHS, ExprAST &RHS) :
+        LHS(LHS), RHS(RHS) { }
+    void pp() override {
+        std::cout << "Assignment: " << LHS.Name << " = \n\t";
+        RHS.pp();
+    }
+};
+
 class ExpressionStatementAST : public StatementAST {
 public:
     ExprAST &Statement;

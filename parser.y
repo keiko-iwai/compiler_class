@@ -71,6 +71,7 @@ numeric : TINTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
         ;
 
 expr : TLPAREN expr TRPAREN { $$ = $2; }
+     | ident TEQUAL expr { $$ = new AssignmentAST(*$<ident>1, *$3); }
      | comparison_expr
      ;
 
