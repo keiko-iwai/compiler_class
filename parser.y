@@ -11,7 +11,9 @@
 %union {
     ExprAST *expr;
     BlockExprAST *block;
-    StatementExprAST *stmt;
+    StatementAST *stmt;
+    IdentifierExprAST *ident;
+    VarDeclExprAST *var_decl;
     std::string *string;
     int token;
 }
@@ -30,9 +32,10 @@
    we call an ident (defined by union type ident) we are really
    calling an (NIdentifier*). It makes the compiler happy.
  */
+%type <ident> ident
 %type <expr> numeric expr add_expr mul_expr comparison_expr factor
 %type <block> program stmts
-%type <stmt> stmt
+%type <stmt> stmt var_decl
 %type <string> comparison_op add_op mul_op
 
 /* Operator precedence for mathematical operators */
@@ -47,13 +50,21 @@
 
 program : stmts { programBlock = $1; }
         ;
-        
+
 stmts : stmt { $$ = new BlockExprAST(); $$->statements.push_back($<stmt>1); }
       | stmts stmt { $1->statements.push_back($<stmt>2); }
       ;
 
-stmt : expr /* fixme - there are more statements */
+stmt : var_decl
+     | expr { $$ = new ExpressionStatementAST(*$1); }
      ;
+
+var_decl : ident ident { $$ = new VarDeclExprAST(*$1, *$2); }
+         | ident ident TEQUAL expr { $$ = new VarDeclExprAST(*$1, *$2, $4); }
+         ;
+
+ident : TIDENTIFIER { $$ = new IdentifierExprAST(*$1); delete $1; }
+      ;
 
 numeric : TINTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
         | TDOUBLE  { $$ = new DoubleExprAST(atol($1->c_str())); delete $1;  }
@@ -74,6 +85,7 @@ mul_expr : mul_expr mul_op factor { $$ = new BinaryExprAST(*$2, $1, $3); }
          | factor;
 
 factor : TLPAREN expr TRPAREN { $$ = $2; }
+       | ident { $<ident>$ = $1; }
        | numeric; /* TMINUS factor too! But it needs a class to support unary expressions */
 
 

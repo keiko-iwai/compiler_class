@@ -2,19 +2,23 @@
 #include <vector>
 #include <memory>
 
-class ExprAST {
+class NodeAST {
 public:
-    virtual ~ExprAST() = default;
+    virtual ~NodeAST() = default;
     virtual void pp() {
         std::cout << "Default print: " << this << "\n";
     };
 };
 
-class StatementExprAST : public ExprAST {
-
+class ExprAST : public NodeAST {
+/* parent of expression classes: block, int, double, identifier, method call, binary operation */
 };
 
-typedef std::vector<StatementExprAST *> StatementList;
+class StatementAST : public NodeAST {
+/* parent of statements: variable declaration, function declaration, expression-statement */
+};
+
+typedef std::vector<StatementAST *> StatementList;
 
 class BlockExprAST : public ExprAST {
 public:
@@ -49,6 +53,15 @@ public:
     }
 };
 
+class IdentifierExprAST : public ExprAST {
+public:
+    std::string Name;
+    IdentifierExprAST(const std::string& Name) : Name(Name) { }
+    void pp() override {
+        std::cout << "indentifier " << Name << std::endl;
+    }
+};
+
 class BinaryExprAST : public ExprAST {
     std::string Op;
     ExprAST *LHS, *RHS;
@@ -61,5 +74,35 @@ public:
         LHS->pp();
         std::cout << "\tright: ";
         RHS->pp();
+    }
+};
+
+class ExpressionStatementAST : public StatementAST {
+public:
+    ExprAST &Statement;
+    ExpressionStatementAST(ExprAST &Statement) :
+        Statement(Statement) { }
+    void pp() override {
+        Statement.pp();
+    }
+};
+
+class VarDeclExprAST : public StatementAST {
+public:
+    const IdentifierExprAST &Type;
+    IdentifierExprAST &Name;
+    ExprAST *AssignmentExpr;
+    VarDeclExprAST(const IdentifierExprAST &Type, IdentifierExprAST &Name) :
+        Type(Type), Name(Name), AssignmentExpr(nullptr) { }
+    VarDeclExprAST(const IdentifierExprAST &Type, IdentifierExprAST &Name, ExprAST *AssignmentExpr) :
+        Type(Type), Name(Name), AssignmentExpr(AssignmentExpr) { }
+    void pp() override {
+        std::cout << "Variable " << Type.Name << " " << Name.Name ;
+        if (!AssignmentExpr) {
+            std::cout << " unassigned" << std::endl;
+        } else {
+            std::cout << ":\n\t= ";
+            AssignmentExpr->pp();
+        }
     }
 };

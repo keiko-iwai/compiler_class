@@ -5,12 +5,15 @@
 extern BlockExprAST *programBlock;
 extern int yyparse();
 
-int main(int argc, char **argv)
+int main()
 {
     yyparse();
     CodeGenContext context;
 
-    std::cout << "Successfully parsed programBlock" << std::endl;
+    if (!programBlock) {
+        std::cout << "Invalid input. Nothing parsed" << std::endl;
+        return 1;
+    }
     context.pp(programBlock);
     return 0;
 }
