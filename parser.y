@@ -30,14 +30,16 @@
    we call an ident (defined by union type ident) we are really
    calling an (NIdentifier*). It makes the compiler happy.
  */
-%type <expr> numeric expr 
+%type <expr> numeric expr add_expr mul_expr
 %type <block> program stmts
 %type <stmt> stmt
-%type <string> comparison_op numeric_op
+%type <string> comparison_op add_op mul_op
 
 /* Operator precedence for mathematical operators */
 %left TPLUS TMINUS
 %left TMUL TDIV
+%left TCEQ TCNE TCLT TCLE TCGT TCGE
+%right TEQUAL
 
 %start program
 
@@ -57,15 +59,21 @@ numeric : TINTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
         | TDOUBLE  { $$ = new DoubleExprAST(atol($1->c_str())); delete $1;  }
         ;
 
-expr : numeric /*defined*/
-     | expr comparison_op expr {  $$ = new BinaryExprAST(*$2, $1, $3); }
-     | expr numeric_op expr { $$ = new BinaryExprAST(*$2, $1, $3); }
+expr : expr comparison_op add_expr { $$ = new BinaryExprAST(*$2, $1, $3); }
      | TLPAREN expr TRPAREN { $$ = $2; }
+     | add_expr
      ;
 
-comparison_op : TCEQ | TCNE | TCLT | TCLE | TCGT | TCGE
-    ;
+add_expr : add_expr add_op mul_expr { $$ = new BinaryExprAST(*$2, $1, $3); }
+         | mul_expr;
 
-numeric_op : TPLUS | TMINUS | TMUL | TDIV
-          ;
+mul_expr : mul_expr mul_op numeric { $$ = new BinaryExprAST(*$2, $1, $3); }
+         | numeric;
+
+comparison_op : TCEQ | TCNE | TCLT | TCLE | TCGT | TCGE ;
+
+add_op : TPLUS | TMINUS ;
+
+mul_op : TMUL | TDIV ;
+
 %%
