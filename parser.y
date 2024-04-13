@@ -14,6 +14,8 @@
     StatementAST *stmt;
     IdentifierExprAST *ident;
     VarDeclExprAST *var_decl;
+    VariableList *func_args;
+    ExpressionList *call_args;
     std::string *string;
     int token;
 }
@@ -34,8 +36,10 @@
  */
 %type <ident> ident
 %type <expr> numeric expr add_expr mul_expr comparison_expr factor
-%type <block> program stmts
-%type <stmt> stmt var_decl
+%type <block> program stmts block
+%type <func_args> func_decl_args
+%type <call_args> call_args
+%type <stmt> stmt var_decl func_decl
 %type <string> comparison_op add_op mul_op
 
 /* Operator precedence for mathematical operators */
@@ -55,7 +59,7 @@ stmts : stmt { $$ = new BlockExprAST(); $$->statements.push_back($<stmt>1); }
       | stmts stmt { $1->statements.push_back($<stmt>2); }
       ;
 
-stmt : var_decl
+stmt : var_decl | func_decl
      | expr { $$ = new ExpressionStatementAST(*$1); }
      ;
 
@@ -70,8 +74,11 @@ numeric : TINTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
         | TDOUBLE  { $$ = new DoubleExprAST(atol($1->c_str())); delete $1;  }
         ;
 
+/* expressions */
+
 expr : TLPAREN expr TRPAREN { $$ = $2; }
      | ident TEQUAL expr { $$ = new AssignmentAST(*$<ident>1, *$3); }
+     | ident TLPAREN call_args TRPAREN { $$ = new CallExprAST(*$1, *$3); delete $3; }
      | comparison_expr
      ;
 
@@ -95,5 +102,25 @@ comparison_op : TCEQ | TCNE | TCLT | TCLE | TCGT | TCGE ;
 add_op : TPLUS | TMINUS ;
 
 mul_op : TMUL | TDIV ;
+
+/* function grammar rules */
+
+func_decl : ident ident TLPAREN func_decl_args TRPAREN block
+            { $$ = new FunctionDeclarationAST(*$1, *$2, *$4, *$6); delete $4; }
+          ;
+
+block : TLBRACE stmts TRBRACE { $$ = $2; }
+      | TLBRACE TRBRACE { $$ = new BlockExprAST(); }
+      ;
+
+call_args : /* empty */  { $$ = new ExpressionList(); }
+          | expr { $$ = new ExpressionList(); $$->push_back($1); }
+          | call_args TCOMMA expr  { $1->push_back($3); }
+          ;
+
+func_decl_args : /* empty */  { $$ = new VariableList(); }
+          | var_decl { $$ = new VariableList(); $$->push_back($<var_decl>1); }
+          | func_decl_args TCOMMA var_decl { $1->push_back($<var_decl>3); }
+          ;
 
 %%

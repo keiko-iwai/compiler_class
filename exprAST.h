@@ -18,7 +18,12 @@ class StatementAST : public NodeAST {
 /* parent of statements: variable declaration, function declaration, expression-statement */
 };
 
+class StatementAST;
+class VarDeclExprAST;
+
 typedef std::vector<StatementAST *> StatementList;
+typedef std::vector<ExprAST *> ExpressionList;
+typedef std::vector<VarDeclExprAST *> VariableList;
 
 class BlockExprAST : public ExprAST {
 public:
@@ -89,6 +94,22 @@ public:
     }
 };
 
+class CallExprAST : public ExprAST {
+public:
+    const IdentifierExprAST &Name;
+    ExpressionList Arguments;
+    CallExprAST(const IdentifierExprAST &Name, ExpressionList &Arguments) :
+        Name(Name), Arguments(Arguments) { }
+    CallExprAST(const IdentifierExprAST& Name) : Name(Name) { }
+    void pp() override {
+        std::cout << "Call function: " << Name.Name << " = \n\t";
+        ExpressionList::const_iterator it;
+        for (it = Arguments.begin(); it != Arguments.end(); it++) {
+            (**it).pp();
+        }
+    }
+};
+
 class ExpressionStatementAST : public StatementAST {
 public:
     ExprAST &Statement;
@@ -116,5 +137,34 @@ public:
             std::cout << ":\n\t= ";
             AssignmentExpr->pp();
         }
+    }
+};
+
+class FunctionDeclarationAST : public StatementAST {
+public:
+    const IdentifierExprAST &Type;
+    const IdentifierExprAST &Name;
+    VariableList Arguments;
+    BlockExprAST &Block;
+    FunctionDeclarationAST(const IdentifierExprAST &Type,
+            const IdentifierExprAST &Name,
+            const VariableList &Arguments,
+            BlockExprAST &Block) :
+        Type(Type), Name(Name), Arguments(Arguments), Block(Block) { }
+
+    void pp() override {
+        std::cout << std::endl << "Function " << Type.Name << " " << Name.Name << "\n\tArguments:";
+        if (!Arguments.size()) {
+            std::cout << " empty." << std::endl;
+        } else {
+            std::cout << std::endl;
+            VariableList::const_iterator it;
+            for (it = Arguments.begin(); it != Arguments.end(); it++) {
+                (**it).pp();
+            }
+        }
+        std::cout << "\tBody:" << std::endl;
+        Block.pp();
+        std::cout << "Function " << Type.Name << " end. " << std::endl;
     }
 };
