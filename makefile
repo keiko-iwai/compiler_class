@@ -1,7 +1,7 @@
 build: project
 
 project: tokens.cpp parser.cpp
-	clang++ -g parser.cpp tokens.cpp main.cpp
+	clang++ -g parser.cpp tokens.cpp processor.cpp main.cpp
 
 tokens.cpp: tokens.l
 	lex -o tokens.cpp tokens.l

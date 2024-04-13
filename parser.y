@@ -1,12 +1,17 @@
 %{
     #include <cstdio>
     #include "exprAST.h"
+
+    BlockExprAST *programBlock;
+
     extern int yylex();
     void yyerror(const char *s) { printf("[Bison] ERROR: %s\n", s); }
 %}
 
 %union {
     ExprAST *expr;
+    BlockExprAST *block;
+    StatementExprAST *stmt;
     std::string *string;
     int token;
 }
@@ -38,14 +43,14 @@
 
 %%
 
-program : stmts {  }
+program : stmts { programBlock = $1; }
         ;
         
-stmts : stmt {  }
-      | stmts stmt {  }
+stmts : stmt { $$ = new BlockExprAST(); $$->statements.push_back($<stmt>1); }
+      | stmts stmt { $1->statements.push_back($<stmt>2); }
       ;
 
-stmt : expr { }
+stmt : expr /* fixme - there are more statements */
      ;
 
 numeric : TINTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
@@ -55,7 +60,7 @@ numeric : TINTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
 expr : numeric /*defined*/
      | expr comparison_op expr {  $$ = new BinaryExprAST(*$2, $1, $3); }
      | expr numeric_op expr { $$ = new BinaryExprAST(*$2, $1, $3); }
-     | TLPAREN expr TRPAREN {  }
+     | TLPAREN expr TRPAREN { $$ = $2; }
      ;
 
 comparison_op : TCEQ | TCNE | TCLT | TCLE | TCGT | TCGE
