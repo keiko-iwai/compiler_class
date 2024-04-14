@@ -1,7 +1,7 @@
 build: project
 
 project: tokens.cpp parser.cpp
-	clang++ -g parser.cpp tokens.cpp processor.cpp main.cpp `llvm-config --cxxflags --ldflags --system-libs --libs core orcjit native`
+	clang++ -g parser.cpp tokens.cpp processor.cpp codegen.cpp main.cpp `llvm-config --cxxflags --ldflags --system-libs --libs core orcjit native`
 #	clang++ -g parser.cpp tokens.cpp processor.cpp main.cpp
 
 tokens.cpp: tokens.l

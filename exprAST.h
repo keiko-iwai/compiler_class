@@ -12,7 +12,7 @@ public:
     virtual void pp() {
         std::cout << "Default print: " << this << "\n";
     };
-     virtual llvm::Value *codeGen(CodeGenContext& context) {
+     virtual llvm::Value *codeGen(CodeGenContext &context) {
         std::cout << "Default codegen: " << this << "\n";
         return nullptr;
     };
@@ -36,6 +36,7 @@ typedef std::vector<VarDeclExprAST *> VariableList;
 class BlockExprAST : public ExprAST {
 public:
     StatementList statements;
+    llvm::Value *codeGen(CodeGenContext &context) override;
 
     void pp() override {
         StatementList::const_iterator it;
@@ -50,6 +51,7 @@ class IntExprAST : public ExprAST {
     int Val;
 public:
     IntExprAST(int Val) : Val(Val) { std::cout << "Integer parsed" << std::endl; }
+    llvm::Value *codeGen(CodeGenContext &context) override;
 
     void pp() override {
         std::cout << "int= " << Val << std::endl;
@@ -61,6 +63,8 @@ class DoubleExprAST : public ExprAST {
 
 public:
     DoubleExprAST(double Val) : Val(Val) { std::cout << "Double parsed" << std::endl; }
+    llvm::Value *codeGen(CodeGenContext &context) override;
+
     void pp() override {
         std::cout << "double= " << Val << std::endl;
     }
@@ -70,6 +74,8 @@ class IdentifierExprAST : public ExprAST {
 public:
     std::string Name;
     IdentifierExprAST(const std::string& Name) : Name(Name) { }
+    llvm::Value *codeGen(CodeGenContext &context) override;
+
     void pp() override {
         std::cout << "indentifier " << Name << std::endl;
     }
@@ -81,7 +87,8 @@ class BinaryExprAST : public ExprAST {
 
 public:
     BinaryExprAST(std::string Op, ExprAST *LHS, ExprAST *RHS)
-        : Op(Op), LHS(LHS), RHS(RHS) { std::cout << "Expression parsed " << Op << std::endl; }
+        : Op(Op), LHS(LHS), RHS(RHS)
+        { std::cout << "Expression parsed " << Op << std::endl; }
     void pp() override {
         std::cout << "Expression " << Op << ":\n\tleft: ";
         LHS->pp();
@@ -96,6 +103,8 @@ public:
     ExprAST &RHS;
     AssignmentAST(IdentifierExprAST &LHS, ExprAST &RHS) :
         LHS(LHS), RHS(RHS) { }
+    llvm::Value *codeGen(CodeGenContext &context) override;
+
     void pp() override {
         std::cout << "Assignment: " << LHS.Name << " = \n\t";
         RHS.pp();
@@ -109,6 +118,8 @@ public:
     CallExprAST(const IdentifierExprAST &Name, ExpressionList &Arguments) :
         Name(Name), Arguments(Arguments) { }
     CallExprAST(const IdentifierExprAST& Name) : Name(Name) { }
+    llvm::Value *codeGen(CodeGenContext &context) override;
+
     void pp() override {
         std::cout << "Call function: " << Name.Name << " = \n\t";
         ExpressionList::const_iterator it;
@@ -121,8 +132,9 @@ public:
 class ExpressionStatementAST : public StatementAST {
 public:
     ExprAST &Statement;
-    ExpressionStatementAST(ExprAST &Statement) :
-        Statement(Statement) { }
+    ExpressionStatementAST(ExprAST &Statement) : Statement(Statement) { }
+    llvm::Value *codeGen(CodeGenContext &context) override;
+
     void pp() override {
         Statement.pp();
     }
@@ -130,15 +142,17 @@ public:
 
 class VarDeclExprAST : public StatementAST {
 public:
-    const IdentifierExprAST &Type;
+    const IdentifierExprAST &TypeName;
     IdentifierExprAST &Name;
     ExprAST *AssignmentExpr;
-    VarDeclExprAST(const IdentifierExprAST &Type, IdentifierExprAST &Name) :
-        Type(Type), Name(Name), AssignmentExpr(nullptr) { }
-    VarDeclExprAST(const IdentifierExprAST &Type, IdentifierExprAST &Name, ExprAST *AssignmentExpr) :
-        Type(Type), Name(Name), AssignmentExpr(AssignmentExpr) { }
+    VarDeclExprAST(const IdentifierExprAST &TypeName, IdentifierExprAST &Name) :
+        TypeName(TypeName), Name(Name), AssignmentExpr(nullptr) { }
+    VarDeclExprAST(const IdentifierExprAST &TypeName, IdentifierExprAST &Name, ExprAST *AssignmentExpr) :
+        TypeName(TypeName), Name(Name), AssignmentExpr(AssignmentExpr) { }
+    llvm::Value *codeGen(CodeGenContext &context) override;
+
     void pp() override {
-        std::cout << "Variable " << Type.Name << " " << Name.Name ;
+        std::cout << "Variable " << TypeName.Name << " " << Name.Name ;
         if (!AssignmentExpr) {
             std::cout << " unassigned" << std::endl;
         } else {
@@ -150,18 +164,20 @@ public:
 
 class FunctionDeclarationAST : public StatementAST {
 public:
-    const IdentifierExprAST &Type;
+    const IdentifierExprAST &TypeName;
     const IdentifierExprAST &Name;
     VariableList Arguments;
     BlockExprAST &Block;
-    FunctionDeclarationAST(const IdentifierExprAST &Type,
+    FunctionDeclarationAST(const IdentifierExprAST &TypeName,
             const IdentifierExprAST &Name,
             const VariableList &Arguments,
             BlockExprAST &Block) :
-        Type(Type), Name(Name), Arguments(Arguments), Block(Block) { }
+        TypeName(TypeName), Name(Name), Arguments(Arguments), Block(Block) { }
+    llvm::Value *codeGen(CodeGenContext &context) override;
 
     void pp() override {
-        std::cout << std::endl << "Function " << Type.Name << " " << Name.Name << "\n\tArguments:";
+        std::cout << std::endl << "Function " << TypeName.Name << " "
+            << Name.Name << "\n\tArguments:";
         if (!Arguments.size()) {
             std::cout << " empty." << std::endl;
         } else {
@@ -173,6 +189,6 @@ public:
         }
         std::cout << "\tBody:" << std::endl;
         Block.pp();
-        std::cout << "Function " << Type.Name << " end. " << std::endl;
+        std::cout << "Function " << TypeName.Name << " end. " << std::endl;
     }
 };
