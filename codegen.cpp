@@ -86,6 +86,16 @@ Value *AssignmentAST::codeGen(CodeGenContext &context)
     return context.Builder->CreateStore(value, Alloca);
 }
 
+Value *BinaryExprAST::codeGen(CodeGenContext &context)
+{
+    Value *left = LHS->codeGen(context);
+    Value *right = RHS->codeGen(context);
+    if (!left || !right)
+        return nullptr;
+    // TODO: operations
+    return nullptr;
+}
+
 Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
 {
     std::vector<Type *> argTypes;

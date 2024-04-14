@@ -89,6 +89,8 @@ public:
     BinaryExprAST(std::string Op, ExprAST *LHS, ExprAST *RHS)
         : Op(Op), LHS(LHS), RHS(RHS)
         { std::cout << "Expression parsed " << Op << std::endl; }
+    llvm::Value *codeGen(CodeGenContext &context) override;
+
     void pp() override {
         std::cout << "Expression " << Op << ":\n\tleft: ";
         LHS->pp();
