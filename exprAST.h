@@ -1,12 +1,20 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Type.h"
+
+class CodeGenContext;
 
 class NodeAST {
 public:
     virtual ~NodeAST() = default;
     virtual void pp() {
         std::cout << "Default print: " << this << "\n";
+    };
+     virtual llvm::Value *codeGen(CodeGenContext& context) {
+        std::cout << "Default codegen: " << this << "\n";
+        return nullptr;
     };
 };
 

@@ -15,5 +15,7 @@ int main()
         return 1;
     }
     context.pp(programBlock);
+    context.generateCode(*programBlock);
+    context.runCode();
     return 0;
 }
