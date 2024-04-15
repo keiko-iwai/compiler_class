@@ -1,11 +1,6 @@
-int func1(double a) {
-    a = a + 10.0
+int f1() {
+  int a = 7
+  a = a + 5
 }
 
-double func2() {
-    int x = 10
-    x = x * x
-}
-
-func1(2.0)
-func2()
+f1()

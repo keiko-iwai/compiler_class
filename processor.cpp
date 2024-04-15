@@ -53,13 +53,9 @@ void CodeGenContext::generateCode(BlockExprAST &mainBlock)
     // Validate the generated code, checking for consistency.
     verifyFunction(*TheFunction);
 
+    TheFunction->print(errs());
     // Run the optimizer on the function.
     // TheFPM->run(*TheFunction, *TheFAM);
-
-    if (RetVal)
-    {
-        RetVal->print(errs());
-    }
     std::cout << "Code is generated.\n";
 }
 

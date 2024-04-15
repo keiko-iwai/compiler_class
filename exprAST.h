@@ -11,11 +11,12 @@ public:
     virtual ~NodeAST() = default;
     virtual void pp() {
         std::cout << "Default print: " << this << "\n";
-    };
+    }
      virtual llvm::Value *codeGen(CodeGenContext &context) {
         std::cout << "Default codegen: " << this << "\n";
         return nullptr;
-    };
+    }
+    virtual llvm::Type *typeOf(CodeGenContext &context);
 };
 
 class ExprAST : public NodeAST {
@@ -56,6 +57,7 @@ public:
     void pp() override {
         std::cout << "int= " << Val << std::endl;
     }
+    llvm::Type *typeOf(CodeGenContext &context) override;
 };
 
 class DoubleExprAST : public ExprAST {
@@ -68,6 +70,7 @@ public:
     void pp() override {
         std::cout << "double= " << Val << std::endl;
     }
+    llvm::Type *typeOf(CodeGenContext &context) override;
 };
 
 class IdentifierExprAST : public ExprAST {
@@ -79,6 +82,7 @@ public:
     void pp() override {
         std::cout << "indentifier " << Name << std::endl;
     }
+    llvm::Type *typeOf(CodeGenContext &context) override;
 };
 
 class BinaryExprAST : public ExprAST {
@@ -97,6 +101,7 @@ public:
         std::cout << "\tright: ";
         RHS->pp();
     }
+    llvm::Type *typeOf(CodeGenContext &context) override;
 };
 
 class AssignmentAST : public ExprAST {
@@ -136,6 +141,7 @@ public:
     ExprAST &Statement;
     ExpressionStatementAST(ExprAST &Statement) : Statement(Statement) { }
     llvm::Value *codeGen(CodeGenContext &context) override;
+    llvm::Type *typeOf(CodeGenContext &context) override;
 
     void pp() override {
         Statement.pp();

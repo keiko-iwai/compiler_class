@@ -38,7 +38,7 @@ Value *IdentifierExprAST::codeGen(CodeGenContext &context)
     }
 
     if (!Alloca) {
-        std::cerr << "Undeclared variable " << Name << std::endl;
+        std::cerr << "[AST] Undeclared variable " << Name << std::endl;
         return nullptr;
     }
     return context.Builder->CreateLoad(Alloca->getAllocatedType(), Alloca, Name.c_str());
@@ -74,13 +74,19 @@ Value *AssignmentAST::codeGen(CodeGenContext &context)
     AllocaInst *Alloca = TheBlock->locals[LHS.Name];
     if (!Alloca)
     {
-        std::cerr << "Undeclared variable " << LHS.Name << std::endl;
+        std::cerr << "[AST] Undeclared variable " << LHS.Name << std::endl;
         return nullptr;
+    }
+    if (RHS.typeOf(context) != Alloca->getAllocatedType())
+    {
+        std::cerr << "[AST] The variable " << LHS.Name  << " assigned with an incompatible type " << std::endl;
+        return nullptr;
+
     }
     Value *value = RHS.codeGen(context);
     if (!value)
     {
-        std::cerr << "Not generated value for " << LHS.Name << std::endl;
+        std::cerr << "[AST] Not generated value for " << LHS.Name << std::endl;
         return nullptr;
     }
     return context.Builder->CreateStore(value, Alloca);
@@ -88,12 +94,49 @@ Value *AssignmentAST::codeGen(CodeGenContext &context)
 
 Value *BinaryExprAST::codeGen(CodeGenContext &context)
 {
-    Value *left = LHS->codeGen(context);
-    Value *right = RHS->codeGen(context);
-    if (!left || !right)
-        return nullptr;
-    // TODO: operations
+  std::cout << "Codegen for expression " << Op << ":" << std::endl;
+  Type *Ltype = LHS->typeOf(context);
+  Type *Rtype = RHS->typeOf(context);
+  if (Ltype != Rtype) {
+    std::cerr << "[AST] Types for expression " << Op << " do not match" << std::endl;
     return nullptr;
+  }
+
+  bool isDoubleType = Type::getDoubleTy(*context.TheContext) == Ltype;
+
+  Value *L = LHS->codeGen(context);
+  Value *R = RHS->codeGen(context);
+  if (!L || !R) {
+    std::cerr << "[AST] Empty codegen for L=" << L << " and R=" << R << std::endl;
+    return nullptr;
+  }
+  if (Op.compare("+") == 0) {
+    L = isDoubleType
+      ? context.Builder->CreateFAdd(L, R, "addtmp")
+      : context.Builder->CreateAdd(L, R, "addtmp");
+    return L;
+  }
+  if (Op.compare("-") == 0) {
+    L = isDoubleType
+      ? context.Builder->CreateFSub(L, R, "subtmp")
+      : context.Builder->CreateSub(L, R, "subtmp");
+    return L;
+  }
+  if (Op.compare("*") == 0) {
+    L = isDoubleType
+      ? context.Builder->CreateFMul(L, R, "multmp")
+      : context.Builder->CreateMul(L, R, "multmp");
+    return L;
+  }
+  if (Op.compare("/") == 0) {
+    L = isDoubleType
+      ? context.Builder->CreateFDiv(L, R, "divtmp")
+      : context.Builder->CreateSDiv(L, R, "divtmp");
+    return L;
+  }
+  // TODO: comparison operations
+  std::cerr << "[AST] Operation " << Op << " not supported" << std::endl;
+  return nullptr;
 }
 
 Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
@@ -106,11 +149,11 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
     }
     std::cout << "Creating function: " << Name.Name << std::endl;
 
-    FunctionType *ftype = FunctionType::get(context.typeOf(TypeName), argTypes, false);
-    Function *function = Function::Create(
-        ftype, GlobalValue::ExternalLinkage, Name.Name, context.TheModule.get());
+    FunctionType *FT = FunctionType::get(context.typeOf(TypeName), argTypes, false);
+    Function *TheFunction = Function::Create(
+        FT, GlobalValue::ExternalLinkage, Name.Name, context.TheModule.get());
 
-    BasicBlock *bblock = BasicBlock::Create(*context.TheContext, "entry", function);
+    BasicBlock *bblock = BasicBlock::Create(*context.TheContext, "entry", TheFunction);
     context.Builder->SetInsertPoint(bblock);
     context.pushBlock(bblock);
 
@@ -125,15 +168,16 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
     if (RetVal)
     {
         context.Builder->CreateRet(RetVal);
-        RetVal->print(errs());
     }
     else
         context.Builder->CreateRetVoid();
-    verifyFunction(*function);
+    verifyFunction(*TheFunction);
+
+    TheFunction->print(errs());
 
     context.popBlock();
     context.Builder->SetInsertPoint(context.currentBlock());
-    return function;
+    return TheFunction;
 }
 
 Value *CallExprAST::codeGen(CodeGenContext &context)
@@ -142,7 +186,7 @@ Value *CallExprAST::codeGen(CodeGenContext &context)
     Function *function = context.TheModule->getFunction(Name.Name.c_str());
     if (!function)
     {
-        std::cerr << "Function " << Name.Name << " not found" << std::endl;
+        std::cerr << "[AST] Function " << Name.Name << " not found" << std::endl;
     }
     std::vector<Value *> args;
     ExpressionList::const_iterator it;
@@ -152,4 +196,41 @@ Value *CallExprAST::codeGen(CodeGenContext &context)
     }
     CallInst *call = context.Builder->CreateCall(function, args, Name.Name);
     return call;
+}
+
+/* typeOf methods */
+Type *NodeAST::typeOf(CodeGenContext &context) {
+  return Type::getVoidTy(*context.TheContext);
+}
+
+Type *IntExprAST::typeOf(CodeGenContext &context) {
+  return Type::getInt32Ty(*context.TheContext);
+}
+
+Type *DoubleExprAST::typeOf(CodeGenContext &context) {
+  return Type::getDoubleTy(*context.TheContext);
+}
+
+Type *IdentifierExprAST::typeOf(CodeGenContext &context) {
+  CodeGenBlock *TheBlock = context._blocks.top();
+  AllocaInst *Alloca = TheBlock->locals[Name];
+  if (!Alloca) {
+    std::cerr << "[AST] Unknown variable " << Name << std::endl;
+    return nullptr;
+  }
+  return Alloca->getAllocatedType();
+}
+
+Type *BinaryExprAST::typeOf(CodeGenContext &context) {
+  Type *L = LHS->typeOf(context);
+  Type *R = RHS->typeOf(context);
+  if (L != R) {
+    std::cerr << "[AST] Failed type check in expession " << Op << std::endl;
+    return Type::getVoidTy(*context.TheContext);
+  }
+  return L;
+}
+
+Type *ExpressionStatementAST::typeOf(CodeGenContext &context) {
+  return Statement.typeOf(context);
 }
