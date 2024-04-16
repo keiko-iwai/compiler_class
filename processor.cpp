@@ -7,146 +7,147 @@ using namespace llvm::orc;
 
 AllocaInst *CodeGenContext::CreateBlockAlloca(BasicBlock *BB, Type *type, const std::string &VarName)
 {
-    IRBuilder<> TmpB(BB, BB->begin());
-    return TmpB.CreateAlloca(type, nullptr, VarName);
+  IRBuilder<> TmpB(BB, BB->begin());
+  return TmpB.CreateAlloca(type, nullptr, VarName);
 }
 
 /* Compile the AST into a module */
 void CodeGenContext::generateCode(BlockExprAST &mainBlock)
 {
-    std::cout << "Generating code...\n";
+  std::cout << "Generating code...\n";
 
-    // create main function
-    IdentifierExprAST type = IdentifierExprAST("int");
-    IdentifierExprAST name = IdentifierExprAST("main");
-    VariableList args;
-    FunctionDeclarationAST *main = new FunctionDeclarationAST(type, name, args, mainBlock);
+  // create main function
+  IdentifierExprAST type = IdentifierExprAST("int");
+  IdentifierExprAST name = IdentifierExprAST("main");
+  VariableList args;
+  FunctionDeclarationAST *main = new FunctionDeclarationAST(type, name, args, mainBlock);
 
-    std::vector<Type *> Args;
-    FunctionType *FT = FunctionType::get(Type::getVoidTy(*TheContext), Args, false);
-    Function *TheFunction = Function::Create(FT,
-        Function::ExternalLinkage, _mainFunctionName, TheModule.get());
-    BasicBlock *bblock = BasicBlock::Create(*TheContext, "entry", TheFunction);
-    Builder->SetInsertPoint(bblock);
+  std::vector<Type *> Args;
+  FunctionType *FT = FunctionType::get(Type::getVoidTy(*TheContext), Args, false);
+  Function *TheFunction = Function::Create(FT,
+                                           Function::ExternalLinkage, _mainFunctionName, TheModule.get());
+  BasicBlock *bblock = BasicBlock::Create(*TheContext, "entry", TheFunction);
+  Builder->SetInsertPoint(bblock);
 
-    // Push a new variable/block context
-    pushBlock(bblock);
-    Value *RetVal = mainBlock.codeGen(*this);
-    if (RetVal)
-    {
-        Builder->CreateRet(RetVal);
-    }
-    else
-    {
-        Builder->CreateRetVoid();
-    }
-    popBlock();
+  // Push a new variable/block context
+  pushBlock(bblock);
+  Value *RetVal = mainBlock.codeGen(*this);
+  if (RetVal)
+  {
+    Builder->CreateRet(RetVal);
+  }
+  else
+  {
+    Builder->CreateRetVoid();
+  }
+  popBlock();
 
-    // Validate the generated code, checking for consistency.
-    verifyFunction(*TheFunction);
+  // Validate the generated code, checking for consistency.
+  verifyFunction(*TheFunction);
 
-    TheFunction->print(errs());
-    // Run the optimizer on the function.
-    // TheFPM->run(*TheFunction, *TheFAM);
-    std::cout << "Code is generated.\n";
+  TheFunction->print(errs());
+  // Run the optimizer on the function.
+  // TheFPM->run(*TheFunction, *TheFAM);
+  std::cout << "Code is generated.\n";
 }
 
-void CodeGenContext::pp(BlockExprAST *block) {
-    block->pp();
+void CodeGenContext::pp(BlockExprAST *block)
+{
+  block->pp();
 }
 
 CodeGenContext::CodeGenContext()
 {
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    InitializeNativeTargetAsmParser();
-    TheJIT = ExitOnErr(SimpleJIT::Create());
-    InitializeModuleAndManagers();
+  InitializeNativeTarget();
+  InitializeNativeTargetAsmPrinter();
+  InitializeNativeTargetAsmParser();
+  TheJIT = ExitOnErr(SimpleJIT::Create());
+  InitializeModuleAndManagers();
 }
 
 void CodeGenContext::InitializeModuleAndManagers()
 {
-    // Open a new context and module.
-    TheContext = std::make_unique<LLVMContext>();
-    TheModule = std::make_unique<Module>("SimpleJIT", *TheContext);
-    TheModule->setDataLayout(TheJIT->getDataLayout());
-    AddRuntime();
+  // Open a new context and module.
+  TheContext = std::make_unique<LLVMContext>();
+  TheModule = std::make_unique<Module>("SimpleJIT", *TheContext);
+  TheModule->setDataLayout(TheJIT->getDataLayout());
+  AddRuntime();
 
-    // Create a new builder for the module.
-    Builder = std::make_unique<IRBuilder<>>(*TheContext);
+  // Create a new builder for the module.
+  Builder = std::make_unique<IRBuilder<>>(*TheContext);
 
-    // Create new pass and analysis managers.
-    TheFPM = std::make_unique<FunctionPassManager>();
-    TheLAM = std::make_unique<LoopAnalysisManager>();
-    TheFAM = std::make_unique<FunctionAnalysisManager>();
-    TheCGAM = std::make_unique<CGSCCAnalysisManager>();
-    TheMAM = std::make_unique<ModuleAnalysisManager>();
-    ThePIC = std::make_unique<PassInstrumentationCallbacks>();
-    TheSI = std::make_unique<StandardInstrumentations>(*TheContext,
-                                                       /*DebugLogging*/ true);
-    TheSI->registerCallbacks(*ThePIC, TheMAM.get());
+  // Create new pass and analysis managers.
+  TheFPM = std::make_unique<FunctionPassManager>();
+  TheLAM = std::make_unique<LoopAnalysisManager>();
+  TheFAM = std::make_unique<FunctionAnalysisManager>();
+  TheCGAM = std::make_unique<CGSCCAnalysisManager>();
+  TheMAM = std::make_unique<ModuleAnalysisManager>();
+  ThePIC = std::make_unique<PassInstrumentationCallbacks>();
+  TheSI = std::make_unique<StandardInstrumentations>(*TheContext,
+                                                     /*DebugLogging*/ true);
+  TheSI->registerCallbacks(*ThePIC, TheMAM.get());
 
-    // Add transform passes.
-    // Do simple "peephole" optimizations and bit-twiddling optzns.
-    TheFPM->addPass(InstCombinePass());
-    // Reassociate expressions.
-    TheFPM->addPass(ReassociatePass());
-    // Eliminate Common SubExpressions.
-    TheFPM->addPass(GVNPass());
-    // Simplify the control flow graph (deleting unreachable blocks, etc).
-    TheFPM->addPass(SimplifyCFGPass());
+  // Add transform passes.
+  // Do simple "peephole" optimizations and bit-twiddling optzns.
+  TheFPM->addPass(InstCombinePass());
+  // Reassociate expressions.
+  TheFPM->addPass(ReassociatePass());
+  // Eliminate Common SubExpressions.
+  TheFPM->addPass(GVNPass());
+  // Simplify the control flow graph (deleting unreachable blocks, etc).
+  TheFPM->addPass(SimplifyCFGPass());
 
-    // Register analysis passes used in these transform passes.
-    PassBuilder PB;
-    PB.registerModuleAnalyses(*TheMAM);
-    PB.registerFunctionAnalyses(*TheFAM);
-    PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
+  // Register analysis passes used in these transform passes.
+  PassBuilder PB;
+  PB.registerModuleAnalyses(*TheMAM);
+  PB.registerFunctionAnalyses(*TheFAM);
+  PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
 }
 
 /* Executes the AST by running the main function */
 void CodeGenContext::runCode()
 {
-    std::cout << "Running code...\n";
+  std::cout << "Running code...\n";
 
-    // execution
-    auto RT = TheJIT->getMainJITDylib().createResourceTracker();
+  // execution
+  auto RT = TheJIT->getMainJITDylib().createResourceTracker();
 
-    auto TSM = ThreadSafeModule(std::move(TheModule), std::move(TheContext));
-    ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
-    InitializeModuleAndManagers();
+  auto TSM = ThreadSafeModule(std::move(TheModule), std::move(TheContext));
+  ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
+  InitializeModuleAndManagers();
 
-    // Search the JIT for the __anon_expr symbol.
-    auto ExprSymbol = ExitOnErr(TheJIT->lookup(_mainFunctionName));
-    // assert(ExprSymbol && "Function not found");
+  // Search the JIT for the __anon_expr symbol.
+  auto ExprSymbol = ExitOnErr(TheJIT->lookup(_mainFunctionName));
+  // assert(ExprSymbol && "Function not found");
 
-    // Get the symbol's address and cast it to the right type (takes no
-    // arguments, returns a double) so we can call it as a native function.
-    void (*FP)() = ExprSymbol.getAddress().toPtr<void (*)()>();
-    FP();
-    std::cout << "Evaluated successfully" << std::endl;
+  // Get the symbol's address and cast it to the right type (takes no
+  // arguments, returns a double) so we can call it as a native function.
+  void (*FP)() = ExprSymbol.getAddress().toPtr<void (*)()>();
+  FP();
+  std::cout << "Evaluated successfully" << std::endl;
 
-    // Delete the anonymous expression module from the JIT.
-    ExitOnErr(RT->remove());
+  // Delete the anonymous expression module from the JIT.
+  ExitOnErr(RT->remove());
 
-    std::cout << "Code was run.\n";
-    return;
+  std::cout << "Code was run.\n";
+  return;
 }
 
 /* Returns an LLVM type based on the identifier */
 Type *CodeGenContext::typeOf(const IdentifierExprAST &type)
 {
-    if (type.Name.compare("int") == 0)
-    {
-        return Type::getInt32Ty(*TheContext);
-    }
-    if (type.Name.compare("double") == 0)
-    {
-        return Type::getDoubleTy(*TheContext);
-    }
-    if (type.Name.compare("void") == 0)
-    {
-        return Type::getVoidTy(*TheContext);
-    }
-    std::cerr << "Unknown type: " << type.Name << std::endl;
+  if (type.Name.compare("int") == 0)
+  {
     return Type::getInt32Ty(*TheContext);
+  }
+  if (type.Name.compare("double") == 0)
+  {
+    return Type::getDoubleTy(*TheContext);
+  }
+  if (type.Name.compare("void") == 0)
+  {
+    return Type::getVoidTy(*TheContext);
+  }
+  std::cerr << "Unknown type: " << type.Name << std::endl;
+  return Type::getInt32Ty(*TheContext);
 }

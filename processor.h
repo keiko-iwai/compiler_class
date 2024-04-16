@@ -37,57 +37,57 @@ class BlockExprAST;
 class CodeGenBlock
 {
 public:
-    BasicBlock *block;
-    std::map<std::string, AllocaInst *> locals;
+  BasicBlock *block;
+  std::map<std::string, AllocaInst *> locals;
 };
 
 class CodeGenContext
 {
-    std::string _mainFunctionName = std::string("main");
-    Function *_mainFunction;
+  std::string _mainFunctionName = std::string("main");
+  Function *_mainFunction;
 
 public:
-    std::unique_ptr<LLVMContext> TheContext;
-    std::unique_ptr<Module> TheModule;
-    std::unique_ptr<IRBuilder<>> Builder;
-    std::unique_ptr<SimpleJIT> TheJIT;
-    std::unique_ptr<FunctionPassManager> TheFPM;
-    std::unique_ptr<LoopAnalysisManager> TheLAM;
-    std::unique_ptr<FunctionAnalysisManager> TheFAM;
-    std::unique_ptr<CGSCCAnalysisManager> TheCGAM;
-    std::unique_ptr<ModuleAnalysisManager> TheMAM;
-    std::unique_ptr<PassInstrumentationCallbacks> ThePIC;
-    std::unique_ptr<StandardInstrumentations> TheSI;
-    ExitOnError ExitOnErr;
+  std::unique_ptr<LLVMContext> TheContext;
+  std::unique_ptr<Module> TheModule;
+  std::unique_ptr<IRBuilder<>> Builder;
+  std::unique_ptr<SimpleJIT> TheJIT;
+  std::unique_ptr<FunctionPassManager> TheFPM;
+  std::unique_ptr<LoopAnalysisManager> TheLAM;
+  std::unique_ptr<FunctionAnalysisManager> TheFAM;
+  std::unique_ptr<CGSCCAnalysisManager> TheCGAM;
+  std::unique_ptr<ModuleAnalysisManager> TheMAM;
+  std::unique_ptr<PassInstrumentationCallbacks> ThePIC;
+  std::unique_ptr<StandardInstrumentations> TheSI;
+  ExitOnError ExitOnErr;
 
-    std::map<std::string, AllocaInst *> NamedValues;
-    std::stack<CodeGenBlock *> _blocks;
+  std::map<std::string, AllocaInst *> NamedValues;
+  std::stack<CodeGenBlock *> _blocks;
 
-    CodeGenContext();
-    void InitializeModuleAndManagers();
-    void AddRuntime();
+  CodeGenContext();
+  void InitializeModuleAndManagers();
+  void AddRuntime();
 
-    void pp(BlockExprAST *block);
-    void generateCode(BlockExprAST &block);
-    void runCode();
-    AllocaInst *CreateBlockAlloca(BasicBlock *BB, Type *type, const std::string &VarName);
+  void pp(BlockExprAST *block);
+  void generateCode(BlockExprAST &block);
+  void runCode();
+  AllocaInst *CreateBlockAlloca(BasicBlock *BB, Type *type, const std::string &VarName);
 
-    Type *typeOf(const IdentifierExprAST &type);
+  Type *typeOf(const IdentifierExprAST &type);
 
-    std::map<std::string, AllocaInst *> &locals()
-    {
-        return _blocks.top()->locals;
-    }
-    BasicBlock *currentBlock() { return _blocks.top()->block; }
-    void pushBlock(BasicBlock *block)
-    {
-        _blocks.push(new CodeGenBlock());
-        _blocks.top()->block = block;
-    }
-    void popBlock()
-    {
-        CodeGenBlock *top = _blocks.top();
-        _blocks.pop();
-        delete top;
-    }
+  std::map<std::string, AllocaInst *> &locals()
+  {
+    return _blocks.top()->locals;
+  }
+  BasicBlock *currentBlock() { return _blocks.top()->block; }
+  void pushBlock(BasicBlock *block)
+  {
+    _blocks.push(new CodeGenBlock());
+    _blocks.top()->block = block;
+  }
+  void popBlock()
+  {
+    CodeGenBlock *top = _blocks.top();
+    _blocks.pop();
+    delete top;
+  }
 };

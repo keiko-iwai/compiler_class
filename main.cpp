@@ -7,15 +7,16 @@ extern int yyparse();
 
 int main()
 {
-    yyparse();
-    CodeGenContext context;
+  yyparse();
+  CodeGenContext context;
 
-    if (!programBlock) {
-        std::cout << "Invalid input. Nothing parsed" << std::endl;
-        return 1;
-    }
-    context.pp(programBlock);
-    context.generateCode(*programBlock);
-    context.runCode();
-    return 0;
+  if (!programBlock)
+  {
+    std::cout << "Invalid input. Nothing parsed" << std::endl;
+    return 1;
+  }
+  context.pp(programBlock);
+  context.generateCode(*programBlock);
+  context.runCode();
+  return 0;
 }
