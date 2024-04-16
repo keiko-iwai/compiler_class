@@ -234,3 +234,14 @@ Type *BinaryExprAST::typeOf(CodeGenContext &context) {
 Type *ExpressionStatementAST::typeOf(CodeGenContext &context) {
   return Statement.typeOf(context);
 }
+
+Type *CallExprAST::typeOf(CodeGenContext &context)
+{
+    Function *function = context.TheModule->getFunction(Name.Name.c_str());
+    if (!function)
+    {
+        std::cerr << "[AST] Function " << Name.Name << " not found" << std::endl;
+        return nullptr;
+    }
+    return function->getReturnType();
+}

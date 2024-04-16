@@ -134,6 +134,7 @@ public:
             (**it).pp();
         }
     }
+    llvm::Type *typeOf(CodeGenContext &context) override;
 };
 
 class ExpressionStatementAST : public StatementAST {
