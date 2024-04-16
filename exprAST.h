@@ -201,3 +201,22 @@ public:
         std::cout << "Function " << TypeName.Name << " end. " << std::endl;
     }
 };
+
+class ReturnStatementAST : public StatementAST {
+  ExprAST *Expr;
+public:
+  ReturnStatementAST() : Expr(nullptr) { }
+  ReturnStatementAST(ExprAST *Expr) : Expr(Expr) { }
+  llvm::Value *codeGen(CodeGenContext &context) override;
+  llvm::Type *typeOf(CodeGenContext &context) override;
+
+  void pp() override {
+    std::cout << "Return: " ;
+    if (!Expr) {
+        std::cout << " void" << std::endl;
+    } else {
+        std::cout << ":\n\t= ";
+        Expr->pp();
+    }
+  }
+};

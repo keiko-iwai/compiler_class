@@ -34,6 +34,7 @@
 %token <token> LPAREN RPAREN LBRACE TRBRACE COMMA DOT SEMICOLON
 %token <string> EQ NE LT LE GT GE EQUAL
 %token <string> PLUS MINUS MUL DIV
+%token <string> RETURN
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -67,6 +68,8 @@ stmts : stmt { $$ = new BlockExprAST(); $$->statements.push_back($<stmt>1); }
 
 stmt : var_decl SEMICOLON | func_decl
      | expr SEMICOLON { $$ = new ExpressionStatementAST(*$1); }
+     | RETURN expr SEMICOLON { $$ = new ReturnStatementAST($2); }
+     | RETURN SEMICOLON { $$ = new ReturnStatementAST(); }
      ;
 
 var_decl : ident ident { $$ = new VarDeclExprAST(*$1, *$2); }

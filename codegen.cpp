@@ -198,6 +198,25 @@ Value *CallExprAST::codeGen(CodeGenContext &context)
     return call;
 }
 
+Value *ReturnStatementAST::codeGen(CodeGenContext &context)
+{
+  std::cout << "Creating return: " << std::endl;
+  if (!Expr)
+  {
+    context.Builder->CreateRetVoid();
+    return nullptr;
+  }
+
+  Value *RetVal = Expr->codeGen(context);
+  if (RetVal)
+  {
+    context.Builder->CreateRet(RetVal);
+    return RetVal;
+  }
+  std::cerr << "[AST] Failed to generate return result " << std::endl;
+  return nullptr;
+}
+
 /* typeOf methods */
 Type *NodeAST::typeOf(CodeGenContext &context) {
   return Type::getVoidTy(*context.TheContext);
@@ -244,4 +263,11 @@ Type *CallExprAST::typeOf(CodeGenContext &context)
         return nullptr;
     }
     return function->getReturnType();
+}
+
+Type *ReturnStatementAST::typeOf(CodeGenContext &context)
+{
+  if (!Expr)
+    return Type::getVoidTy(*context.TheContext);
+  return Expr->typeOf(context);
 }
