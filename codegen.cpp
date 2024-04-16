@@ -52,11 +52,11 @@ Value *ExpressionStatementAST::codeGen(CodeGenContext &context)
 
 Value *VarDeclExprAST::codeGen(CodeGenContext &context)
 {
-    std::cout << "Creating variable declaration " << TypeName.Name << " " << Name.Name << std::endl;
+    std::cout << "Creating variable declaration " << TypeName.Name << " " << Name.get() << std::endl;
     CodeGenBlock *TheBlock = context._blocks.top();
     AllocaInst *Alloca = context.CreateBlockAlloca(
-        TheBlock->block, context.typeOf(TypeName), Name.Name.c_str());
-    TheBlock->locals[Name.Name] = Alloca;
+        TheBlock->block, context.typeOf(TypeName), Name.get().c_str());
+    TheBlock->locals[Name.get()] = Alloca;
 
     if (AssignmentExpr)
     {
@@ -147,11 +147,12 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
     {
         argTypes.push_back(context.typeOf((**it).TypeName));
     }
-    std::cout << "Creating function: " << Name.Name << std::endl;
+
+    std::cout << "Creating function: " << Name.get() << std::endl;
 
     FunctionType *FT = FunctionType::get(context.typeOf(TypeName), argTypes, false);
     Function *TheFunction = Function::Create(
-        FT, GlobalValue::ExternalLinkage, Name.Name, context.TheModule.get());
+        FT, GlobalValue::ExternalLinkage, Name.get(), context.TheModule.get());
 
     BasicBlock *bblock = BasicBlock::Create(*context.TheContext, "entry", TheFunction);
     context.Builder->SetInsertPoint(bblock);
@@ -159,9 +160,17 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
 
     CodeGenBlock *TheBlock = context._blocks.top();
     TheBlock->locals.clear();
-    for (it = Arguments.begin(); it != Arguments.end(); it++)
-    {
-        (**it).codeGen(context);
+
+    unsigned idx = 0;
+    for (auto &Arg : TheFunction->args()) {
+      std::string name = Arguments[idx]->Name.get();
+      AllocaInst *Alloca = context.CreateBlockAlloca(
+        TheBlock->block, argTypes[idx], name);
+
+      Arg.setName(name);
+      context.Builder->CreateStore(&Arg, Alloca);
+      TheBlock->locals[name] = Alloca;
+      idx++;
     }
 
     Value *RetVal = Block.codeGen(context);
@@ -182,11 +191,11 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
 
 Value *CallExprAST::codeGen(CodeGenContext &context)
 {
-    std::cout << "Creating function call: " << Name.Name << std::endl;
-    Function *function = context.TheModule->getFunction(Name.Name.c_str());
+    std::cout << "Creating function call: " << Name.get() << std::endl;
+    Function *function = context.TheModule->getFunction(Name.get().c_str());
     if (!function)
     {
-        std::cerr << "[AST] Function " << Name.Name << " not found" << std::endl;
+        std::cerr << "[AST] Function " << Name.get() << " not found" << std::endl;
     }
     std::vector<Value *> args;
     ExpressionList::const_iterator it;
@@ -194,7 +203,7 @@ Value *CallExprAST::codeGen(CodeGenContext &context)
     {
         args.push_back((**it).codeGen(context));
     }
-    CallInst *call = context.Builder->CreateCall(function, args, Name.Name);
+    CallInst *call = context.Builder->CreateCall(function, args, Name.get());
     return call;
 }
 
@@ -256,10 +265,10 @@ Type *ExpressionStatementAST::typeOf(CodeGenContext &context) {
 
 Type *CallExprAST::typeOf(CodeGenContext &context)
 {
-    Function *function = context.TheModule->getFunction(Name.Name.c_str());
+    Function *function = context.TheModule->getFunction(Name.get().c_str());
     if (!function)
     {
-        std::cerr << "[AST] Function " << Name.Name << " not found" << std::endl;
+        std::cerr << "[AST] Function " << Name.get() << " not found" << std::endl;
         return nullptr;
     }
     return function->getReturnType();

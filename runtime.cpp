@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cmath>
 #include "exprAST.h"
 #include "processor.h"
 
@@ -12,6 +13,7 @@ extern "C" {
   int printd(double X) {
     return fprintf(stderr, "%f\n", X);
   }
+  double sqrt(double X);
 }
 
 void CodeGenContext::AddRuntime()
@@ -29,6 +31,14 @@ void CodeGenContext::AddRuntime()
     "printd",
     FunctionType::get(
       Type::getInt32Ty(*TheContext),
+      { Type::getDoubleTy(*TheContext) },
+      false
+    )
+  );
+  TheModule->getOrInsertFunction(
+    "sqrt",
+    FunctionType::get(
+      Type::getDoubleTy(*TheContext),
       { Type::getDoubleTy(*TheContext) },
       false
     )

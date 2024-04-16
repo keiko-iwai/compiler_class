@@ -76,13 +76,14 @@ public:
 class IdentifierExprAST : public ExprAST {
 public:
     std::string Name;
-    IdentifierExprAST(const std::string& Name) : Name(Name) { }
+    IdentifierExprAST(const std::string &Name) : Name(Name) { }
     llvm::Value *codeGen(CodeGenContext &context) override;
 
     void pp() override {
         std::cout << "indentifier " << Name << std::endl;
     }
     llvm::Type *typeOf(CodeGenContext &context) override;
+    const std::string &get() const { return Name; };
 };
 
 class BinaryExprAST : public ExprAST {
