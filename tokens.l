@@ -13,7 +13,10 @@ int column = 1;
 
 %%
 
-[ \t\n]                 ;
+[ \t\n]                    ;
+"//"[^\n]*                 ; /* comment */
+"/*"([^*]|\*+[^*/])*\*+"/" ; /* multi-line comment */
+
 "return"                HANDLE_COLUMN; return RETURN;
 [a-zA-Z_][a-zA-Z0-9_]*  HANDLE_COLUMN; SAVE_TOKEN; return IDENTIFIER;
 [0-9]+\.[0-9]*          HANDLE_COLUMN; SAVE_TOKEN; return DOUBLE;
