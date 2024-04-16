@@ -42,11 +42,11 @@
    calling an (NIdentifier*). It makes the compiler happy.
  */
 %type <ident> ident
-%type <expr> numeric expr add_expr mul_expr comparison_expr factor
+%type <expr> numeric expr add_expr mul_expr comparison_expr factor call_expr
 %type <block> program stmts block
 %type <func_args> func_decl_args
 %type <call_args> call_args
-%type <stmt> stmt var_decl func_decl
+%type <stmt> stmt var_decl func_decl return_stmt
 %type <string> comparison_op add_op mul_op
 
 /* Operator precedence for mathematical operators */
@@ -66,10 +66,13 @@ stmts : stmt { $$ = new BlockExprAST(); $$->statements.push_back($<stmt>1); }
       | stmts stmt { $1->statements.push_back($<stmt>2); }
       ;
 
-stmt : var_decl SEMICOLON | func_decl
+stmt : return_stmt SEMICOLON | func_decl
      | expr SEMICOLON { $$ = new ExpressionStatementAST(*$1); }
-     | RETURN expr SEMICOLON { $$ = new ReturnStatementAST($2); }
-     | RETURN SEMICOLON { $$ = new ReturnStatementAST(); }
+     | var_decl SEMICOLON
+     ;
+
+return_stmt : RETURN expr { $$ = new ReturnStatementAST($2); }
+     | RETURN { $$ = new ReturnStatementAST(); }
      ;
 
 var_decl : ident ident { $$ = new VarDeclExprAST(*$1, *$2); }
@@ -87,7 +90,6 @@ numeric : INTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
 
 expr : comparison_expr
      | ident EQUAL expr { $$ = new AssignmentAST(*$<ident>1, *$3); }
-     | ident LPAREN call_args RPAREN { $$ = new CallExprAST(*$1, *$3); delete $3; }
      ;
 
 comparison_expr : comparison_expr comparison_op add_expr { $$ = new BinaryExprAST(*$2, $1, $3); }
@@ -103,8 +105,12 @@ mul_expr : mul_expr mul_op factor { $$ = new BinaryExprAST(*$2, $1, $3); }
 
 factor : LPAREN expr RPAREN { $$ = $2; }
        | ident { $<ident>$ = $1; }
+       | call_expr
        | numeric /* MINUS factor too! But it needs a class to support unary expressions */
        ;
+
+call_expr : ident LPAREN call_args RPAREN { $$ = new CallExprAST(*$1, *$3); delete $3; }
+          ;
 
 comparison_op : EQ | NE | LT | LE | GT | GE ;
 
