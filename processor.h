@@ -65,6 +65,7 @@ public:
 
     CodeGenContext();
     void InitializeModuleAndManagers();
+    void AddRuntime();
 
     void pp(BlockExprAST *block);
     void generateCode(BlockExprAST &block);

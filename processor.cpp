@@ -78,6 +78,7 @@ void CodeGenContext::InitializeModuleAndManagers()
     TheContext = std::make_unique<LLVMContext>();
     TheModule = std::make_unique<Module>("SimpleJIT", *TheContext);
     TheModule->setDataLayout(TheJIT->getDataLayout());
+    AddRuntime();
 
     // Create a new builder for the module.
     Builder = std::make_unique<IRBuilder<>>(*TheContext);

@@ -27,6 +27,7 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/LLVMContext.h"
 #include <memory>
+#include <iostream>
 
 namespace llvm {
 namespace orc {
