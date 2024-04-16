@@ -21,7 +21,6 @@ extern "C"
 
 void CodeGenContext::AddRuntime()
 {
-  fprintf(stdout, "Insert functions\n");
   TheModule->getOrInsertFunction(
       "printi",
       FunctionType::get(
