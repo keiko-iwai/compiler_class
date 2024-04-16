@@ -19,8 +19,8 @@ int column = 1;
 
 "return"                HANDLE_COLUMN; return RETURN;
 [a-zA-Z_][a-zA-Z0-9_]*  HANDLE_COLUMN; SAVE_TOKEN; return IDENTIFIER;
-[0-9]+\.[0-9]*          HANDLE_COLUMN; SAVE_TOKEN; return DOUBLE;
-[0-9]+                  HANDLE_COLUMN; SAVE_TOKEN; return INTEGER;
+-?[0-9]+\.[0-9]*        HANDLE_COLUMN; SAVE_TOKEN; return DOUBLE;
+-?[0-9]+                HANDLE_COLUMN; SAVE_TOKEN; return INTEGER;
 "="                     HANDLE_COLUMN; return TOKEN(EQUAL);
 ";"                     HANDLE_COLUMN; return TOKEN(SEMICOLON);
 "("                     HANDLE_COLUMN; return TOKEN(LPAREN);

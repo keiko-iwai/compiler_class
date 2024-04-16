@@ -12,5 +12,5 @@ double discriminant(double a, double b, double c) {
   return sqrt(b*b - 4.0*a*c);
 }
 
-double y = discriminant(1.0, 8.0, 15.0);
+double y = discriminant(1.0, 2.0, -15.0);
 printd(y);
