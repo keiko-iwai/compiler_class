@@ -5,14 +5,6 @@
 using namespace llvm;
 using namespace llvm::orc;
 
-AllocaInst *CodeGenContext::CreateEntryBlockAlloca(Function *TheFunction, const std::string &VarName)
-{
-    IRBuilder<> TmpB(&TheFunction->getEntryBlock(),
-                     TheFunction->getEntryBlock().begin());
-    return TmpB.CreateAlloca(Type::getDoubleTy(*TheContext), nullptr, VarName);
-    // todo: we might want pass the type as argument
-}
-
 AllocaInst *CodeGenContext::CreateBlockAlloca(BasicBlock *BB, Type *type, const std::string &VarName)
 {
     IRBuilder<> TmpB(BB, BB->begin());

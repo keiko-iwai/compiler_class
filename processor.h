@@ -70,7 +70,6 @@ public:
     void pp(BlockExprAST *block);
     void generateCode(BlockExprAST &block);
     void runCode();
-    AllocaInst *CreateEntryBlockAlloca(Function *TheFunction, const std::string &VarName);
     AllocaInst *CreateBlockAlloca(BasicBlock *BB, Type *type, const std::string &VarName);
 
     Type *typeOf(const IdentifierExprAST &type);
