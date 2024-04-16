@@ -146,9 +146,13 @@ Type *CodeGenContext::typeOf(const IdentifierExprAST &type)
     {
         return Type::getInt32Ty(*TheContext);
     }
-    else if (type.Name.compare("double") == 0)
+    if (type.Name.compare("double") == 0)
     {
         return Type::getDoubleTy(*TheContext);
+    }
+    if (type.Name.compare("void") == 0)
+    {
+        return Type::getVoidTy(*TheContext);
     }
     std::cerr << "Unknown type: " << type.Name << std::endl;
     return Type::getInt32Ty(*TheContext);

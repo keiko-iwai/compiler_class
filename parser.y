@@ -6,7 +6,6 @@
   #include "exprAST.h"
 
   BlockExprAST *programBlock;
-  std::map<std::string, FunctionDeclarationAST *> definedFunctions;
 
   extern int yylineno;
   extern int column;
@@ -32,7 +31,7 @@
    they represent.
  */
 %token <string> IDENTIFIER INTEGER DOUBLE
-%token <token> LPAREN RPAREN LBRACE TRBRACE COMMA DOT
+%token <token> LPAREN RPAREN LBRACE TRBRACE COMMA DOT SEMICOLON
 %token <string> EQ NE LT LE GT GE EQUAL
 %token <string> PLUS MINUS MUL DIV
 
@@ -66,8 +65,8 @@ stmts : stmt { $$ = new BlockExprAST(); $$->statements.push_back($<stmt>1); }
       | stmts stmt { $1->statements.push_back($<stmt>2); }
       ;
 
-stmt : var_decl | func_decl
-     | expr { $$ = new ExpressionStatementAST(*$1); }
+stmt : var_decl SEMICOLON | func_decl
+     | expr SEMICOLON { $$ = new ExpressionStatementAST(*$1); }
      ;
 
 var_decl : ident ident { $$ = new VarDeclExprAST(*$1, *$2); }
@@ -83,10 +82,9 @@ numeric : INTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
 
 /* expressions */
 
-expr : LPAREN expr RPAREN { $$ = $2; }
+expr : comparison_expr
      | ident EQUAL expr { $$ = new AssignmentAST(*$<ident>1, *$3); }
      | ident LPAREN call_args RPAREN { $$ = new CallExprAST(*$1, *$3); delete $3; }
-     | comparison_expr
      ;
 
 comparison_expr : comparison_expr comparison_op add_expr { $$ = new BinaryExprAST(*$2, $1, $3); }
@@ -94,15 +92,16 @@ comparison_expr : comparison_expr comparison_op add_expr { $$ = new BinaryExprAS
      ;
 
 add_expr : add_expr add_op mul_expr { $$ = new BinaryExprAST(*$2, $1, $3); }
-         | mul_expr;
+         | mul_expr
+         ;
 
 mul_expr : mul_expr mul_op factor { $$ = new BinaryExprAST(*$2, $1, $3); }
          | factor;
 
 factor : LPAREN expr RPAREN { $$ = $2; }
        | ident { $<ident>$ = $1; }
-       | numeric; /* MINUS factor too! But it needs a class to support unary expressions */
-
+       | numeric /* MINUS factor too! But it needs a class to support unary expressions */
+       ;
 
 comparison_op : EQ | NE | LT | LE | GT | GE ;
 
@@ -113,12 +112,7 @@ mul_op : MUL | DIV ;
 /* function grammar rules */
 
 func_decl : ident ident LPAREN func_decl_args RPAREN block
-            {
-              FunctionDeclarationAST *fn = new FunctionDeclarationAST(*$1, *$2, *$4, *$6);
-              $$ = fn;
-              definedFunctions[$2->Name] = fn;
-              delete $4;
-            }
+          { $$ = new FunctionDeclarationAST(*$1, *$2, *$4, *$6); delete $4; }
           ;
 
 block : LBRACE stmts TRBRACE { $$ = $2; }
