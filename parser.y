@@ -6,6 +6,7 @@
   #include "exprAST.h"
 
   BlockExprAST *programBlock;
+  std::map<std::string, FunctionDeclarationAST *> definedFunctions;
 
   extern int yylineno;
   extern int column;
@@ -121,7 +122,12 @@ mul_op : MUL | DIV ;
 /* function grammar rules */
 
 func_decl : ident ident LPAREN func_decl_args RPAREN block
-          { $$ = new FunctionDeclarationAST(*$1, *$2, *$4, *$6); delete $4; }
+          {
+              FunctionDeclarationAST *fn = new FunctionDeclarationAST(*$1, *$2, *$4, *$6);
+              $$ = fn;
+              definedFunctions[$2->Name] = fn;
+              delete $4;
+          }
           ;
 
 block : LBRACE stmts TRBRACE { $$ = $2; }

@@ -62,17 +62,21 @@ public:
 
   std::map<std::string, AllocaInst *> NamedValues;
   std::stack<CodeGenBlock *> _blocks;
+  std::map<std::string, FunctionDeclarationAST *> DefinedFunctions;
 
   CodeGenContext();
   void InitializeModuleAndManagers();
   void AddRuntime();
 
   void pp(BlockExprAST *block);
+  bool typeCheck(BlockExprAST &block);
   void generateCode(BlockExprAST &block);
   void runCode();
   AllocaInst *CreateBlockAlloca(BasicBlock *BB, Type *type, const std::string &VarName);
 
-  Type *typeOf(const IdentifierExprAST &type);
+  Type *stringTypeToLLVM(const IdentifierExprAST &type);
+  std::string print(Type *type);
+  bool isTypeConversionPossible(Type *a, Type *b);
 
   std::map<std::string, AllocaInst *> &locals()
   {
@@ -89,5 +93,9 @@ public:
     CodeGenBlock *top = _blocks.top();
     _blocks.pop();
     delete top;
+  }
+  void setFunctionList(std::map<std::string, FunctionDeclarationAST *> DefinedFunctions)
+  {
+    DefinedFunctions = DefinedFunctions;
   }
 };

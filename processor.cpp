@@ -134,7 +134,7 @@ void CodeGenContext::runCode()
 }
 
 /* Returns an LLVM type based on the identifier */
-Type *CodeGenContext::typeOf(const IdentifierExprAST &type)
+Type *CodeGenContext::stringTypeToLLVM(const IdentifierExprAST &type)
 {
   if (type.Name.compare("int") == 0)
   {
@@ -150,4 +150,34 @@ Type *CodeGenContext::typeOf(const IdentifierExprAST &type)
   }
   std::cerr << "Unknown type: " << type.Name << std::endl;
   return Type::getInt32Ty(*TheContext);
+}
+
+bool CodeGenContext::isTypeConversionPossible(Type *a, Type *b)
+{
+  Type *intType = Type::getInt32Ty(*TheContext);
+  Type *doubleType = Type::getDoubleTy(*TheContext);
+  return (a == intType && b == doubleType || a == doubleType && b == intType);
+}
+
+bool CodeGenContext::typeCheck(BlockExprAST &block)
+{
+  return block.typeCheck(*this);
+}
+
+std::string CodeGenContext::print(Type *type)
+{
+if (type == Type::getInt32Ty(*TheContext))
+  {
+    return std::string("int");
+  }
+  if (type == Type::getDoubleTy(*TheContext))
+  {
+    return std::string("double");
+  }
+  if (type == Type::getVoidTy(*TheContext))
+  {
+    return std::string("void");
+  }
+
+  return std::string("unknown type");
 }

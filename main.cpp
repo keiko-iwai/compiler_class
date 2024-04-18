@@ -3,12 +3,14 @@
 #include "processor.h"
 
 extern BlockExprAST *programBlock;
+extern std::map<std::string, FunctionDeclarationAST *> definedFunctions;
 extern int yyparse();
 
 int main()
 {
-  yyparse();
   CodeGenContext context;
+
+  yyparse();
 
   if (!programBlock)
   {
@@ -16,7 +18,16 @@ int main()
     return 1;
   }
   context.pp(programBlock);
-  context.generateCode(*programBlock);
+  context.setFunctionList(definedFunctions);
+
+  if (context.typeCheck(*programBlock))
+    context.generateCode(*programBlock);
+  else
+  {
+    std::cout << "Type errors found. Can not run code." << std::endl;
+    return 1;
+  }
+
   context.runCode();
   return 0;
 }

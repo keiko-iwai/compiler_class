@@ -10,6 +10,7 @@ class NodeAST
 {
 public:
   virtual ~NodeAST() = default;
+  virtual bool typeCheck(CodeGenContext &context) { return true; };
   virtual void pp()
   {
     std::cout << "Default print: " << this << "\n";
@@ -54,6 +55,7 @@ public:
       (**it).pp();
     }
   }
+  bool typeCheck(CodeGenContext &context) override;
 };
 
 class IntExprAST : public ExprAST
@@ -110,6 +112,7 @@ public:
   BinaryExprAST(std::string Op, ExprAST *LHS, ExprAST *RHS)
       : Op(Op), LHS(LHS), RHS(RHS) {}
   llvm::Value *codeGen(CodeGenContext &context) override;
+  bool typeCheck(CodeGenContext &context) override;
 
   void pp() override
   {
@@ -128,6 +131,7 @@ public:
   ExprAST &RHS;
   AssignmentAST(IdentifierExprAST &LHS, ExprAST &RHS) : LHS(LHS), RHS(RHS) {}
   llvm::Value *codeGen(CodeGenContext &context) override;
+  bool typeCheck(CodeGenContext &context) override;
 
   void pp() override
   {
@@ -144,10 +148,11 @@ public:
   CallExprAST(const IdentifierExprAST &Name, ExpressionList &Arguments) : Name(Name), Arguments(Arguments) {}
   CallExprAST(const IdentifierExprAST &Name) : Name(Name) {}
   llvm::Value *codeGen(CodeGenContext &context) override;
+  bool typeCheck(CodeGenContext &context) override;
 
   void pp() override
   {
-    std::cout << "Call function: " << Name.Name << " = \n\t";
+    std::cout << "Call function: " << Name.get() << " = \n\t";
     ExpressionList::const_iterator it;
     for (it = Arguments.begin(); it != Arguments.end(); it++)
     {
@@ -180,6 +185,7 @@ public:
   VarDeclExprAST(const IdentifierExprAST &TypeName, IdentifierExprAST &Name) : TypeName(TypeName), Name(Name), AssignmentExpr(nullptr) {}
   VarDeclExprAST(const IdentifierExprAST &TypeName, IdentifierExprAST &Name, ExprAST *AssignmentExpr) : TypeName(TypeName), Name(Name), AssignmentExpr(AssignmentExpr) {}
   llvm::Value *codeGen(CodeGenContext &context) override;
+  bool typeCheck(CodeGenContext &context) override;
 
   void pp() override
   {
@@ -208,6 +214,7 @@ public:
                          const VariableList &Arguments,
                          BlockExprAST &Block) : TypeName(TypeName), Name(Name), Arguments(Arguments), Block(Block) {}
   llvm::Value *codeGen(CodeGenContext &context) override;
+  bool typeCheck(CodeGenContext &context) override;
 
   void pp() override
   {
