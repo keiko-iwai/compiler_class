@@ -272,6 +272,7 @@ Value *ReturnStatementAST::codeGen(CodeGenContext &context)
 /* typeOf methods */
 Type *NodeAST::typeOf(CodeGenContext &context)
 {
+  std::cout << "Default typeOf called! Probably it's a mistake to get the type of the expression " << typeid(this).name() << std::endl;
   return Type::getVoidTy(*context.TheContext);
 }
 
