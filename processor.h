@@ -33,6 +33,7 @@ using namespace llvm;
 using namespace llvm::orc;
 
 class BlockExprAST;
+class FunctionDeclarationAST;
 
 class CodeGenBlock
 {
@@ -63,7 +64,7 @@ public:
 
   std::map<std::string, AllocaInst *> NamedValues;
   std::stack<CodeGenBlock *> _blocks;
-  std::map<std::string, FunctionDeclarationAST *> DefinedFunctions;
+  std::map<std::string, FunctionDeclarationAST *> *DefinedFunctions;
   std::vector<NameTable *> NamesByBlock;
 
   CodeGenContext();
@@ -97,8 +98,8 @@ public:
     _blocks.pop();
     delete top;
   }
-  void setFunctionList(std::map<std::string, FunctionDeclarationAST *> DefinedFunctions)
+  void setFunctionList(std::map<std::string, FunctionDeclarationAST *> *DF)
   {
-    DefinedFunctions = DefinedFunctions;
+    DefinedFunctions = DF;
   }
 };

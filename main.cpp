@@ -3,7 +3,7 @@
 #include "processor.h"
 
 extern BlockExprAST *programBlock;
-extern std::map<std::string, FunctionDeclarationAST *> definedFunctions;
+extern FunctionMap *definedFunctions;
 extern int yyparse();
 
 int main()

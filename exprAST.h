@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <map>
 #include <memory>
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Type.h"
@@ -36,10 +37,12 @@ class StatementAST : public NodeAST
 
 class StatementAST;
 class VarDeclExprAST;
+class FunctionDeclarationAST;
 
 typedef std::vector<StatementAST *> StatementList;
 typedef std::vector<ExprAST *> ExpressionList;
 typedef std::vector<VarDeclExprAST *> VariableList;
+typedef std::map<std::string, FunctionDeclarationAST *> FunctionMap;
 
 class BlockExprAST : public ExprAST
 {

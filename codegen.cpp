@@ -229,7 +229,7 @@ Value *CallExprAST::codeGen(CodeGenContext &context)
   std::vector<Value *> args;
   ExpressionList::const_iterator it;
 
-  FunctionDeclarationAST *fnDecl = context.DefinedFunctions[Name.get()];
+  FunctionDeclarationAST *fnDecl = (*context.DefinedFunctions)[Name.get()];
   int idx = 0;
   for (it = Arguments.begin(); it != Arguments.end(); it++, idx++)
   {
@@ -318,13 +318,14 @@ Type *ExpressionStatementAST::typeOf(CodeGenContext &context)
 
 Type *CallExprAST::typeOf(CodeGenContext &context)
 {
-  Function *function = context.TheModule->getFunction(Name.get().c_str());
+  std::string name = Name.get();
+  FunctionDeclarationAST *function = (*context.DefinedFunctions)[name];
   if (!function)
   {
-    std::cerr << "[AST] Function " << Name.get() << " not found" << std::endl;
+    std::cerr << "Typecheck on call expression: function " << name << " not found" << std::endl;
     return nullptr;
   }
-  return function->getReturnType();
+  return function->typeOf(context);
 }
 
 Type *BlockExprAST::typeOf(CodeGenContext &context)
@@ -412,7 +413,7 @@ bool FunctionDeclarationAST::typeCheck(CodeGenContext &context)
 
 bool CallExprAST::typeCheck(CodeGenContext &context)
 {
-  FunctionDeclarationAST *function = context.DefinedFunctions[Name.get()];
+  FunctionDeclarationAST *function = (*context.DefinedFunctions)[Name.get()];
   if (!function) // external function
     return true;
 

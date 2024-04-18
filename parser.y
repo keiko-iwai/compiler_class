@@ -6,7 +6,7 @@
   #include "exprAST.h"
 
   BlockExprAST *programBlock;
-  std::map<std::string, FunctionDeclarationAST *> definedFunctions;
+  FunctionMap *definedFunctions = new FunctionMap();
 
   extern int yylineno;
   extern int column;
@@ -125,7 +125,7 @@ func_decl : ident ident LPAREN func_decl_args RPAREN block
           {
               FunctionDeclarationAST *fn = new FunctionDeclarationAST(*$1, *$2, *$4, *$6);
               $$ = fn;
-              definedFunctions[$2->Name] = fn;
+              (*definedFunctions)[$2->Name] = fn;
               delete $4;
           }
           ;
