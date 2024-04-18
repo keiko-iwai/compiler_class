@@ -79,12 +79,14 @@ Value *AssignmentAST::codeGen(CodeGenContext &context)
     std::cerr << "[AST] Undeclared variable " << LHS.Name << std::endl;
     return nullptr;
   }
-  if (RHS.typeOf(context) != Alloca->getAllocatedType())
-  {
-    std::cerr << "[AST] The variable " << LHS.Name << " assigned with an incompatible type " << std::endl;
-    return nullptr;
-  }
+
   Value *value = RHS.codeGen(context);
+  Type *resultType = Alloca->getAllocatedType();
+  if (RHS.typeOf(context) != resultType)
+  {
+    value = context.CreateTypeCast(context.Builder, value, resultType);
+  }
+
   if (!value)
   {
     std::cerr << "[AST] Not generated value for " << LHS.Name << std::endl;
@@ -96,15 +98,15 @@ Value *AssignmentAST::codeGen(CodeGenContext &context)
 Value *BinaryExprAST::codeGen(CodeGenContext &context)
 {
   std::cout << "Codegen for expression " << Op << ":" << std::endl;
+
+  Type *doubleType = Type::getDoubleTy(*context.TheContext);
+  bool needCastToDouble = false;
   Type *Ltype = LHS->typeOf(context);
   Type *Rtype = RHS->typeOf(context);
   if (Ltype != Rtype)
   {
-    std::cerr << "[AST] Types for expression " << Op << " do not match" << std::endl;
-    return nullptr;
+    needCastToDouble = true;
   }
-
-  bool isDoubleType = Type::getDoubleTy(*context.TheContext) == Ltype;
 
   Value *L = LHS->codeGen(context);
   Value *R = RHS->codeGen(context);
@@ -113,6 +115,16 @@ Value *BinaryExprAST::codeGen(CodeGenContext &context)
     std::cerr << "[AST] Empty codegen for L=" << L << " and R=" << R << std::endl;
     return nullptr;
   }
+
+  if (needCastToDouble)
+  {
+    if (Ltype != doubleType)
+      L = context.CreateTypeCast(context.Builder, L, doubleType);
+    if (Rtype != doubleType)
+      R = context.CreateTypeCast(context.Builder, R, doubleType);
+  }
+
+  bool isDoubleType = doubleType == Ltype || doubleType == Rtype;
   if (Op.compare("+") == 0)
   {
     L = isDoubleType
@@ -182,6 +194,12 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
   }
 
   Value *RetVal = Block.codeGen(context);
+  Type *returnType = context.stringTypeToLLVM(TypeName);
+  Type *blockType = Block.typeOf(context);
+  if (blockType != returnType && context.isTypeConversionPossible(blockType, returnType)) {
+    RetVal = context.CreateTypeCast(context.Builder, RetVal, returnType);
+  }
+
   if (RetVal)
   {
     context.Builder->CreateRet(RetVal);
@@ -207,9 +225,23 @@ Value *CallExprAST::codeGen(CodeGenContext &context)
   }
   std::vector<Value *> args;
   ExpressionList::const_iterator it;
-  for (it = Arguments.begin(); it != Arguments.end(); it++)
+
+  FunctionDeclarationAST *fnDecl = context.DefinedFunctions[Name.get()];
+  int idx = 0;
+  for (it = Arguments.begin(); it != Arguments.end(); it++, idx++)
   {
-    args.push_back((**it).codeGen(context));
+    Value *val = (**it).codeGen(context);
+    Type *argType = (**it).typeOf(context);
+
+    if (fnDecl)
+    {
+      Type *expectedType = fnDecl->Arguments[idx]->typeOf(context);
+      if (argType != expectedType && context.isTypeConversionPossible(argType, expectedType))
+      {
+        val = context.CreateTypeCast(context.Builder, val, expectedType);
+      }
+    }
+    args.push_back(val);
   }
   CallInst *call = context.Builder->CreateCall(function, args, Name.get());
   return call;

@@ -11,6 +11,15 @@ AllocaInst *CodeGenContext::CreateBlockAlloca(BasicBlock *BB, Type *type, const 
   return TmpB.CreateAlloca(type, nullptr, VarName);
 }
 
+Value *CodeGenContext::CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builder, Value *value, Type *type)
+{
+  if (type == Type::getInt32Ty(*TheContext))
+    return Builder->CreateIntCast(value, type, true /* signed */);
+  if (type == Type::getDoubleTy(*TheContext))
+    return Builder->CreateFPCast(value, type);
+  return value;
+}
+
 /* Compile the AST into a module */
 void CodeGenContext::generateCode(BlockExprAST &mainBlock)
 {

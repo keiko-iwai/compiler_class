@@ -73,6 +73,7 @@ public:
   void generateCode(BlockExprAST &block);
   void runCode();
   AllocaInst *CreateBlockAlloca(BasicBlock *BB, Type *type, const std::string &VarName);
+  Value *CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builder, Value *value, Type *type);
 
   Type *stringTypeToLLVM(const IdentifierExprAST &type);
   std::string print(Type *type);
