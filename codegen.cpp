@@ -325,7 +325,7 @@ Type *CallExprAST::typeOf(CodeGenContext &context)
     std::cerr << "Typecheck on call expression: function " << name << " not found" << std::endl;
     return nullptr;
   }
-  return function->typeOf(context);
+  return context.stringTypeToLLVM(function->TypeName.get());
 }
 
 Type *BlockExprAST::typeOf(CodeGenContext &context)
@@ -384,7 +384,7 @@ bool VarDeclExprAST::typeCheck(CodeGenContext &context)
   Type *R = AssignmentExpr->typeOf(context);
 
   bool result = L == R || context.isTypeConversionPossible(L, R);
-  std::cout << "Typecheck on var decl " << TypeName.get() << "("<< context.print(L) <<
+  std::cout << "Typecheck on var decl " << TypeName.get() <<
     " assigned type=" << context.print(R) << " result=" << result << std::endl;
   return result;
 }
