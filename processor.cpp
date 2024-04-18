@@ -11,12 +11,13 @@ AllocaInst *CodeGenContext::CreateBlockAlloca(BasicBlock *BB, Type *type, const 
   return TmpB.CreateAlloca(type, nullptr, VarName);
 }
 
-Value *CodeGenContext::CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builder, Value *value, Type *type)
+Value *CodeGenContext::CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builder,
+  Value *value, Type *toType)
 {
-  if (type == Type::getInt32Ty(*TheContext))
-    return Builder->CreateIntCast(value, type, true /* signed */);
-  if (type == Type::getDoubleTy(*TheContext))
-    return Builder->CreateFPCast(value, type);
+  if (toType == Type::getInt32Ty(*TheContext)) // to int
+    return Builder->CreateFPToSI(value, toType);
+  if (toType == Type::getDoubleTy(*TheContext)) // to double
+    return Builder->CreateSIToFP(value, toType);
   return value;
 }
 
@@ -41,14 +42,7 @@ void CodeGenContext::generateCode(BlockExprAST &mainBlock)
   // Push a new variable/block context
   pushBlock(bblock);
   Value *RetVal = mainBlock.codeGen(*this);
-  if (RetVal)
-  {
-    Builder->CreateRet(RetVal);
-  }
-  else
-  {
-    Builder->CreateRetVoid();
-  }
+  Builder->CreateRetVoid(); // do not return data pointers to the stack
   popBlock();
 
   // Validate the generated code, checking for consistency.

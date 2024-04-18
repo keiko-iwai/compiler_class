@@ -98,16 +98,6 @@ Value *AssignmentAST::codeGen(CodeGenContext &context)
 Value *BinaryExprAST::codeGen(CodeGenContext &context)
 {
   std::cout << "Codegen for expression " << Op << ":" << std::endl;
-
-  Type *doubleType = Type::getDoubleTy(*context.TheContext);
-  bool needCastToDouble = false;
-  Type *Ltype = LHS->typeOf(context);
-  Type *Rtype = RHS->typeOf(context);
-  if (Ltype != Rtype)
-  {
-    needCastToDouble = true;
-  }
-
   Value *L = LHS->codeGen(context);
   Value *R = RHS->codeGen(context);
   if (!L || !R)
@@ -116,15 +106,20 @@ Value *BinaryExprAST::codeGen(CodeGenContext &context)
     return nullptr;
   }
 
-  if (needCastToDouble)
+  bool needCastToDouble = false;
+  Type *doubleType = Type::getDoubleTy(*context.TheContext);
+  Type *Ltype = LHS->typeOf(context);
+  Type *Rtype = RHS->typeOf(context);
+  if (Ltype != Rtype)
   {
+    needCastToDouble = true;
     if (Ltype != doubleType)
       L = context.CreateTypeCast(context.Builder, L, doubleType);
     if (Rtype != doubleType)
       R = context.CreateTypeCast(context.Builder, R, doubleType);
   }
 
-  bool isDoubleType = doubleType == Ltype || doubleType == Rtype;
+  bool isDoubleType = needCastToDouble || doubleType == Ltype;
   if (Op.compare("+") == 0)
   {
     L = isDoubleType
@@ -301,7 +296,9 @@ Type *BinaryExprAST::typeOf(CodeGenContext &context)
     std::cerr << "[AST] Failed type check in expession " << Op << std::endl;
     return Type::getVoidTy(*context.TheContext);
   }
-  return LHS->typeOf(context);
+  Type *LType = LHS->typeOf(context);
+  Type *RType = RHS->typeOf(context);
+  return (LType == RType) ? LType : Type::getDoubleTy(*context.TheContext);
 }
 
 Type *ExpressionStatementAST::typeOf(CodeGenContext &context)
