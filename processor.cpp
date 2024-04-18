@@ -162,9 +162,13 @@ bool CodeGenContext::isTypeConversionPossible(Type *a, Type *b)
   return (a == intType && b == doubleType || a == doubleType && b == intType);
 }
 
-bool CodeGenContext::typeCheck(BlockExprAST &block)
+bool CodeGenContext::typeCheck(BlockExprAST &mainBlock)
 {
-  return block.typeCheck(*this);
+  // construct the name => type table for the main block
+  NameTable *Names = new NameTable();
+  NamesByBlock.push_back(Names);
+  bool result = mainBlock.typeCheck(*this);
+  return result;
 }
 
 std::string CodeGenContext::print(Type *type)

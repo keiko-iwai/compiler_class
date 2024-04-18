@@ -41,6 +41,7 @@ public:
   std::map<std::string, AllocaInst *> locals;
 };
 
+typedef std::map<std::string, llvm::Type *> NameTable;
 class CodeGenContext
 {
   std::string _mainFunctionName = std::string("main");
@@ -63,6 +64,7 @@ public:
   std::map<std::string, AllocaInst *> NamedValues;
   std::stack<CodeGenBlock *> _blocks;
   std::map<std::string, FunctionDeclarationAST *> DefinedFunctions;
+  std::vector<NameTable *> NamesByBlock;
 
   CodeGenContext();
   void InitializeModuleAndManagers();

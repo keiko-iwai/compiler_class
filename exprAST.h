@@ -3,6 +3,7 @@
 #include <memory>
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Type.h"
+#include "llvm/IR/Function.h"
 
 class CodeGenContext;
 
@@ -45,6 +46,7 @@ class BlockExprAST : public ExprAST
 public:
   StatementList statements;
   llvm::Value *codeGen(CodeGenContext &context) override;
+  llvm::Type *typeOf(CodeGenContext &context) override;
 
   void pp() override
   {
@@ -182,8 +184,10 @@ public:
   const IdentifierExprAST &TypeName;
   IdentifierExprAST &Name;
   ExprAST *AssignmentExpr;
-  VarDeclExprAST(const IdentifierExprAST &TypeName, IdentifierExprAST &Name) : TypeName(TypeName), Name(Name), AssignmentExpr(nullptr) {}
-  VarDeclExprAST(const IdentifierExprAST &TypeName, IdentifierExprAST &Name, ExprAST *AssignmentExpr) : TypeName(TypeName), Name(Name), AssignmentExpr(AssignmentExpr) {}
+  VarDeclExprAST(const IdentifierExprAST &TypeName, IdentifierExprAST &Name) :
+    TypeName(TypeName), Name(Name), AssignmentExpr(nullptr) {}
+  VarDeclExprAST(const IdentifierExprAST &TypeName, IdentifierExprAST &Name, ExprAST *AssignmentExpr):
+    TypeName(TypeName), Name(Name), AssignmentExpr(AssignmentExpr) {}
   llvm::Value *codeGen(CodeGenContext &context) override;
   bool typeCheck(CodeGenContext &context) override;
 
