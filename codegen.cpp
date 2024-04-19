@@ -24,7 +24,7 @@ Value *BlockExprAST::codeGen(CodeGenContext &context)
 {
   StatementList::const_iterator it;
   Value *last = nullptr;
-  for (it = statements.begin(); it != statements.end(); it++)
+  for (it = Statements.begin(); it != Statements.end(); it++)
   {
     last = (**it).codeGen(context);
   }
@@ -287,6 +287,12 @@ Value *ReturnStatementAST::codeGen(CodeGenContext &context)
   return nullptr;
 }
 
+Value *IfStatementAST::codeGen(CodeGenContext &context)
+{
+  std::cerr << "[AST] IF codegen" << std::endl;
+  return nullptr;
+}
+
 /* typeOf methods */
 Type *NodeAST::typeOf(CodeGenContext &context)
 {
@@ -352,7 +358,7 @@ Type *CallExprAST::typeOf(CodeGenContext &context)
 
 Type *BlockExprAST::typeOf(CodeGenContext &context)
 {
-  StatementAST *last = statements.back();
+  StatementAST *last = Statements.back();
   return last->typeOf(context);
 }
 
@@ -368,7 +374,7 @@ bool BlockExprAST::typeCheck(CodeGenContext &context)
 {
   StatementList::const_iterator it;
   bool result = true;
-  for (it = statements.begin(); it != statements.end(); it++)
+  for (it = Statements.begin(); it != Statements.end(); it++)
   {
     result = result && (**it).typeCheck(context);
     if (!result)

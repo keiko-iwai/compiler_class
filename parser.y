@@ -35,7 +35,7 @@
 %token <token> LPAREN RPAREN LBRACE TRBRACE COMMA DOT SEMICOLON
 %token <string> EQ NE LT LE GT GE EQUAL
 %token <string> PLUS MINUS MUL DIV
-%token <string> RETURN
+%token <string> RETURN IF ELSE
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -47,7 +47,7 @@
 %type <block> program stmts block
 %type <func_args> func_decl_args
 %type <call_args> call_args
-%type <stmt> stmt var_decl func_decl return_stmt
+%type <stmt> stmt var_decl func_decl return_stmt if_stmt
 %type <string> comparison_op add_op mul_op
 
 /* Operator precedence for mathematical operators */
@@ -63,11 +63,11 @@
 program : stmts { programBlock = $1; }
         ;
 
-stmts : stmt { $$ = new BlockExprAST(); $$->statements.push_back($<stmt>1); }
-      | stmts stmt { $1->statements.push_back($<stmt>2); }
+stmts : stmt { $$ = new BlockExprAST(); $$->Statements.push_back($<stmt>1); }
+      | stmts stmt { $1->Statements.push_back($<stmt>2); }
       ;
 
-stmt : return_stmt SEMICOLON | func_decl
+stmt : return_stmt SEMICOLON | func_decl | if_stmt
      | expr SEMICOLON { $$ = new ExpressionStatementAST(*$1); }
      | var_decl SEMICOLON
      ;
@@ -85,6 +85,11 @@ ident : IDENTIFIER { $$ = new IdentifierExprAST(*$1); delete $1; }
 
 numeric : INTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
         | DOUBLE  { $$ = new DoubleExprAST(atol($1->c_str())); delete $1;  }
+        ;
+
+if_stmt : IF LPAREN expr RPAREN block { $$ = new IfStatementAST($3, $5); }
+        | IF LPAREN expr RPAREN block ELSE block { $$ = new IfStatementAST($3, $5, $7); }
+        | IF LPAREN expr RPAREN block ELSE if_stmt { $$ = new IfStatementAST($3, $5, $7); }
         ;
 
 /* expressions */

@@ -47,7 +47,7 @@ typedef std::map<std::string, FunctionDeclarationAST *> FunctionMap;
 class BlockExprAST : public ExprAST
 {
 public:
-  StatementList statements;
+  StatementList Statements;
   llvm::Value *codeGen(CodeGenContext &context) override;
   llvm::Type *typeOf(CodeGenContext &context) override;
 
@@ -55,7 +55,7 @@ public:
   {
     StatementList::const_iterator it;
     std::cout << "block: " << this << std::endl;
-    for (it = statements.begin(); it != statements.end(); it++)
+    for (it = Statements.begin(); it != Statements.end(); it++)
     {
       (**it).pp();
     }
@@ -269,6 +269,38 @@ public:
     {
       std::cout << ":\n\t= ";
       Expr->pp();
+    }
+  }
+};
+
+class IfStatementAST : public StatementAST
+{
+public:
+  ExprAST *Expr;
+  BlockExprAST *IfBlock;
+  BlockExprAST *ElseBlock;
+
+  IfStatementAST(ExprAST *Expr, BlockExprAST *IfBlock) : Expr(Expr), IfBlock(IfBlock) {}
+  IfStatementAST(ExprAST *Expr, BlockExprAST *IfBlock, BlockExprAST *ElseBlock) :
+    Expr(Expr), IfBlock(IfBlock), ElseBlock(ElseBlock) {}
+
+  IfStatementAST(ExprAST *Expr, BlockExprAST *IfBlock, StatementAST *Elif) :
+    Expr(Expr), IfBlock(IfBlock) {
+      ElseBlock = new BlockExprAST();
+      ElseBlock->Statements.push_back(Elif);
+    }
+  llvm::Value *codeGen(CodeGenContext &context) override;
+  // no return type
+
+  void pp() override
+  {
+    std::cout << "If: \n";
+    Expr->pp();
+    IfBlock->pp();
+    std::cout << "Else: \n";
+    if (ElseBlock)
+    {
+      ElseBlock->pp();
     }
   }
 };

@@ -18,6 +18,8 @@ int column = 1;
 "/*"([^*]|\*+[^*/])*\*+"/" ; /* multi-line comment */
 
 "return"                HANDLE_COLUMN; return RETURN;
+"if"                    HANDLE_COLUMN; return IF;
+"else"                  HANDLE_COLUMN; return ELSE;
 [a-zA-Z_][a-zA-Z0-9_]*  HANDLE_COLUMN; SAVE_TOKEN; return IDENTIFIER;
 -?[0-9]+\.[0-9]*        HANDLE_COLUMN; SAVE_TOKEN; return DOUBLE;
 -?[0-9]+                HANDLE_COLUMN; SAVE_TOKEN; return INTEGER;
