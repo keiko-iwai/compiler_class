@@ -222,6 +222,7 @@ public:
                          BlockExprAST &Block) : TypeName(TypeName), Name(Name), Arguments(Arguments), Block(Block) {}
   llvm::Value *codeGen(CodeGenContext &context) override;
   bool typeCheck(CodeGenContext &context) override;
+  llvm::Type *getArgumentType(CodeGenContext &context, int idx);
 
   void pp() override
   {

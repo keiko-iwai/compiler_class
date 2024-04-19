@@ -3,17 +3,32 @@
 using namespace llvm;
 using namespace llvm::orc;
 
+/* uncomment to print */
+// #define __LOG_CODEGEN_METHODS 1
+// #define __LOG_TYPECHECK 1
+
+static void logTypecheck(const std::string &str, bool result) {
+#ifdef __LOG_TYPECHECK
+  std::cout << "Typecheck on " << str << ", result: " << result << std::endl;
+#endif
+}
+
+static void logCodegen(const std::string &str) {
+#ifdef __LOG_CODEGEN_METHODS
+  std::cout << "Codegen: " << str << std::endl;
+#endif
+}
+
 /* codegen methods */
 Value *BlockExprAST::codeGen(CodeGenContext &context)
 {
   StatementList::const_iterator it;
   Value *last = nullptr;
-  std::cout << "Creating block" << std::endl;
-
   for (it = statements.begin(); it != statements.end(); it++)
   {
     last = (**it).codeGen(context);
   }
+  logCodegen("block");
   return last;
 }
 
@@ -29,7 +44,7 @@ Value *DoubleExprAST::codeGen(CodeGenContext &context)
 
 Value *IdentifierExprAST::codeGen(CodeGenContext &context)
 {
-  std::cout << "Creating identifier reference: " << Name << std::endl;
+  logCodegen("identifier reference " + Name);
   CodeGenBlock *TheBlock = context._blocks.top();
   AllocaInst *Alloca = TheBlock->locals[Name];
 
@@ -48,13 +63,12 @@ Value *IdentifierExprAST::codeGen(CodeGenContext &context)
 
 Value *ExpressionStatementAST::codeGen(CodeGenContext &context)
 {
-  std::cout << "Creating expression: " << typeid(Statement).name() << std::endl;
   return Statement.codeGen(context);
 }
 
 Value *VarDeclExprAST::codeGen(CodeGenContext &context)
 {
-  std::cout << "Creating variable declaration " << TypeName.Name << " " << Name.get() << std::endl;
+  logCodegen("variable declaration " + Name.get());
   CodeGenBlock *TheBlock = context._blocks.top();
   AllocaInst *Alloca = context.CreateBlockAlloca(
       TheBlock->block, context.stringTypeToLLVM(TypeName), Name.get().c_str());
@@ -70,7 +84,7 @@ Value *VarDeclExprAST::codeGen(CodeGenContext &context)
 
 Value *AssignmentAST::codeGen(CodeGenContext &context)
 {
-  std::cout << "Creating assignment for " << LHS.Name << std::endl;
+  logCodegen("assignment for " + LHS.Name);
   CodeGenBlock *TheBlock = context._blocks.top();
 
   AllocaInst *Alloca = TheBlock->locals[LHS.Name];
@@ -97,7 +111,7 @@ Value *AssignmentAST::codeGen(CodeGenContext &context)
 
 Value *BinaryExprAST::codeGen(CodeGenContext &context)
 {
-  std::cout << "Codegen for expression " << Op << ":" << std::endl;
+  logCodegen("expression " + Op + ":");
   Value *L = LHS->codeGen(context);
   Value *R = RHS->codeGen(context);
   if (!L || !R)
@@ -153,8 +167,14 @@ Value *BinaryExprAST::codeGen(CodeGenContext &context)
   return nullptr;
 }
 
+Type *FunctionDeclarationAST::getArgumentType(CodeGenContext &context, int idx)
+{
+  return context.stringTypeToLLVM(Arguments[idx]->TypeName.get());
+}
+
 Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
 {
+  logCodegen("function " + Name.get());
   // to have the type casts work, typeOf refers the name table
   NameTable *Names = new NameTable();
   context.NamesByBlock.push_back(Names);
@@ -168,8 +188,6 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
     // nametable
     (*Names)[(**it).Name.get()] = context.stringTypeToLLVM((**it).TypeName);
   }
-
-  std::cout << "Creating function: " << Name.get() << std::endl;
 
   FunctionType *FT = FunctionType::get(context.stringTypeToLLVM(TypeName), argTypes, false);
   Function *TheFunction = Function::Create(
@@ -220,25 +238,25 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
 
 Value *CallExprAST::codeGen(CodeGenContext &context)
 {
-  std::cout << "Creating function call: " << Name.get() << std::endl;
+  logCodegen("function call " + Name.get());
   Function *function = context.TheModule->getFunction(Name.get().c_str());
   if (!function)
   {
     std::cerr << "[AST] Function " << Name.get() << " not found" << std::endl;
+    return nullptr;
   }
-  std::vector<Value *> args;
-  ExpressionList::const_iterator it;
-
   FunctionDeclarationAST *fnDecl = (*context.DefinedFunctions)[Name.get()];
+
+  std::vector<Value *> args;
   int idx = 0;
+  ExpressionList::const_iterator it;
   for (it = Arguments.begin(); it != Arguments.end(); it++, idx++)
   {
     Value *val = (**it).codeGen(context);
     Type *argType = (**it).typeOf(context);
-
     if (fnDecl)
     {
-      Type *expectedType = fnDecl->Arguments[idx]->typeOf(context);
+      Type *expectedType = fnDecl->getArgumentType(context, idx);
       if (argType != expectedType && context.isTypeConversionPossible(argType, expectedType))
       {
         val = context.CreateTypeCast(context.Builder, val, expectedType);
@@ -252,7 +270,7 @@ Value *CallExprAST::codeGen(CodeGenContext &context)
 
 Value *ReturnStatementAST::codeGen(CodeGenContext &context)
 {
-  std::cout << "Creating return: " << std::endl;
+  logCodegen("return");
   if (!Expr)
   {
     context.Builder->CreateRetVoid();
@@ -340,7 +358,6 @@ Type *ReturnStatementAST::typeOf(CodeGenContext &context)
   if (!Expr)
     return Type::getVoidTy(*context.TheContext);
   Type *t = Expr->typeOf(context);
-  std::cout << "return " << context.print(t) << std::endl;
   return Expr->typeOf(context);
 }
 
@@ -354,7 +371,7 @@ bool BlockExprAST::typeCheck(CodeGenContext &context)
     if (!result)
       break;
   }
-  std::cout << "Typecheck on block: " << this << " result=" << result << std::endl;
+  logTypecheck("block", result);
   return result;
 }
 
@@ -363,7 +380,7 @@ bool BinaryExprAST::typeCheck(CodeGenContext &context)
   Type *L = LHS->typeOf(context);
   Type *R = RHS->typeOf(context);
   bool result = L == R || context.isTypeConversionPossible(L, R);
-  std::cout << "Typecheck on expression " << Op << " result=" << result << std::endl;
+  logTypecheck("expression " + Op, result);
   return result;
 }
 
@@ -372,12 +389,16 @@ bool AssignmentAST::typeCheck(CodeGenContext &context)
   Type *L = LHS.typeOf(context);
   Type *R = RHS.typeOf(context);
   bool result = L == R || context.isTypeConversionPossible(L, R);
-  std::cout << "Typecheck on assignment " << LHS.get() << " result=" << result << std::endl;
+  logTypecheck("assignment " + LHS.Name, result);
   return result;
 }
 
 bool VarDeclExprAST::typeCheck(CodeGenContext &context)
 {
+  bool assignmentResult = AssignmentExpr->typeCheck(context);
+  if (!assignmentResult)
+    return assignmentResult;
+
   NameTable *currentBlockTable = context.NamesByBlock.back();
   (*currentBlockTable)[Name.get()] = context.stringTypeToLLVM(TypeName);
 
@@ -385,8 +406,7 @@ bool VarDeclExprAST::typeCheck(CodeGenContext &context)
   Type *R = AssignmentExpr->typeOf(context);
 
   bool result = L == R || context.isTypeConversionPossible(L, R);
-  std::cout << "Typecheck on var decl " << TypeName.get() <<
-    " assigned type=" << context.print(R) << " result=" << result << std::endl;
+  logTypecheck("var decl " + Name.get(), result);
   return result;
 }
 
@@ -405,10 +425,9 @@ bool FunctionDeclarationAST::typeCheck(CodeGenContext &context)
   Type *FNType = context.stringTypeToLLVM(TypeName);
   Type *Ret = Block.typeOf(context);
   result = result && (FNType == Ret || context.isTypeConversionPossible(FNType, Ret));
-  std::cout << "Typecheck on function return type " << TypeName.get()
-    << " return " << context.print(Ret) << " result=" << result << std::endl;
-
   context.NamesByBlock.pop_back();
+
+  logTypecheck("function return type " + Name.get(), result);
   return result;
 }
 
@@ -416,7 +435,9 @@ bool CallExprAST::typeCheck(CodeGenContext &context)
 {
   FunctionDeclarationAST *function = (*context.DefinedFunctions)[Name.get()];
   if (!function) // external function
+  {
     return true;
+  }
 
   ExpressionList::const_iterator it;
   int idx = 0;
@@ -428,15 +449,17 @@ bool CallExprAST::typeCheck(CodeGenContext &context)
       return false;
     }
     Type *valueType = (**it).typeOf(context);
-    Type *argType = function->Arguments[idx]->typeOf(context);
+    // the nametable of function arguments does not exist outside.
+    // We obtain the text name of the type and convert to LLVM Type *
+    Type *argType = function->getArgumentType(context, idx);
     if (valueType != argType && !context.isTypeConversionPossible(valueType, argType))
     {
-      std::cerr << "Typecheck on function call " << Name.get() << " failed: argument type"
+      std::cerr << "Typecheck on function call " << Name.get() << " failed: argument type "
         << function->Arguments[idx]->Name.get() << " is wrong " << std::endl;
       return false;
     }
   }
 
-  std::cout << "Typecheck on function call " << Name.get() << " successful." << std::endl;
+  logTypecheck("function call " + Name.get(), true);
   return true;
 }
