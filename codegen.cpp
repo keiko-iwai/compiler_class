@@ -339,12 +339,15 @@ Type *CallExprAST::typeOf(CodeGenContext &context)
 {
   std::string name = Name.get();
   FunctionDeclarationAST *function = (*context.DefinedFunctions)[name];
-  if (!function)
-  {
-    std::cerr << "Typecheck on call expression: function " << name << " not found" << std::endl;
-    return nullptr;
-  }
-  return context.stringTypeToLLVM(function->TypeName.get());
+  if (function)
+    return context.stringTypeToLLVM(function->TypeName.get());
+
+  Function *externalFn = context.TheModule->getFunction(name.c_str());
+  if (externalFn)
+    return externalFn->getReturnType();
+
+  std::cerr << "Typecheck on call expression: function " << name << " not found" << std::endl;
+  return nullptr;
 }
 
 Type *BlockExprAST::typeOf(CodeGenContext &context)
