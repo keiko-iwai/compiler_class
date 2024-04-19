@@ -178,7 +178,6 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
   // to have the type casts work, typeOf refers the name table
   NameTable *Names = new NameTable();
   context.NamesByBlock.push_back(Names);
-
   std::vector<Type *> argTypes;
   VariableList::const_iterator it;
   for (it = Arguments.begin(); it != Arguments.end(); it++)
@@ -192,6 +191,7 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
   FunctionType *FT = FunctionType::get(context.stringTypeToLLVM(TypeName), argTypes, false);
   Function *TheFunction = Function::Create(
       FT, GlobalValue::ExternalLinkage, Name.get(), context.TheModule.get());
+  context.pushFunction(TheFunction);
 
   BasicBlock *bblock = BasicBlock::Create(*context.TheContext, "entry", TheFunction);
   context.Builder->SetInsertPoint(bblock);
@@ -230,6 +230,7 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
 
   TheFunction->print(errs());
 
+  context.popFunction();
   context.popBlock();
   context.NamesByBlock.pop_back();
   context.Builder->SetInsertPoint(context.currentBlock());
@@ -290,7 +291,42 @@ Value *ReturnStatementAST::codeGen(CodeGenContext &context)
 Value *IfStatementAST::codeGen(CodeGenContext &context)
 {
   std::cerr << "[AST] IF codegen" << std::endl;
-  return nullptr;
+  Value *condVal = Expr->codeGen(context);
+  // create true/false comparison
+  condVal = context.CreateNonZeroCmp(context.Builder, condVal, Expr->typeOf(context));
+
+  // need a function to be defined
+  Function *TheFunction = context.currentFunction(); // current function
+  BasicBlock *ThenBB = BasicBlock::Create(*context.TheContext, "then", TheFunction);
+  BasicBlock *ElseBB = BasicBlock::Create(*context.TheContext, "else");
+  BasicBlock *MergeBB = BasicBlock::Create(*context.TheContext, "ifcont");
+
+  // then-block
+  context.Builder->SetInsertPoint(ThenBB);
+  Value *IRThen = ThenBlock->codeGen(context);
+  // finish then-block
+  context.Builder->CreateBr(MergeBB);
+  ThenBB = context.Builder->GetInsertBlock();
+
+  // codegen for else-block:
+  TheFunction->insert(TheFunction->end(), ElseBB);
+  context.Builder->SetInsertPoint(ElseBB);
+  Value *IRElse = ElseBlock ? ElseBlock->codeGen(context) : nullptr;
+  context.Builder->CreateBr(MergeBB);
+
+  // codegen of 'else' can change the current block, update ElseBB for the PHI.
+  ElseBB = context.Builder->GetInsertBlock();
+  TheFunction->insert(TheFunction->end(), MergeBB);
+  context.Builder->SetInsertPoint(MergeBB);
+
+  // result of the if-else block is a phi node
+  PHINode *PN = context.Builder->CreatePHI(
+    Type::getDoubleTy(*context.TheContext), 2 /*numReservedValues*/, "iftmp");
+
+  PN->addIncoming(IRThen, ThenBB); // block value
+  PN->addIncoming(IRElse, ElseBB);
+
+  return PN;
 }
 
 /* typeOf methods */

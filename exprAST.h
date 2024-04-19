@@ -277,15 +277,15 @@ class IfStatementAST : public StatementAST
 {
 public:
   ExprAST *Expr;
-  BlockExprAST *IfBlock;
+  BlockExprAST *ThenBlock;
   BlockExprAST *ElseBlock;
 
-  IfStatementAST(ExprAST *Expr, BlockExprAST *IfBlock) : Expr(Expr), IfBlock(IfBlock) {}
-  IfStatementAST(ExprAST *Expr, BlockExprAST *IfBlock, BlockExprAST *ElseBlock) :
-    Expr(Expr), IfBlock(IfBlock), ElseBlock(ElseBlock) {}
+  IfStatementAST(ExprAST *Expr, BlockExprAST *ThenBlock) : Expr(Expr), ThenBlock(ThenBlock) {}
+  IfStatementAST(ExprAST *Expr, BlockExprAST *ThenBlock, BlockExprAST *ElseBlock) :
+    Expr(Expr), ThenBlock(ThenBlock), ElseBlock(ElseBlock) {}
 
-  IfStatementAST(ExprAST *Expr, BlockExprAST *IfBlock, StatementAST *Elif) :
-    Expr(Expr), IfBlock(IfBlock) {
+  IfStatementAST(ExprAST *Expr, BlockExprAST *ThenBlock, StatementAST *Elif) :
+    Expr(Expr), ThenBlock(ThenBlock) {
       ElseBlock = new BlockExprAST();
       ElseBlock->Statements.push_back(Elif);
     }
@@ -296,7 +296,7 @@ public:
   {
     std::cout << "If: \n";
     Expr->pp();
-    IfBlock->pp();
+    ThenBlock->pp();
     std::cout << "Else: \n";
     if (ElseBlock)
     {

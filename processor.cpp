@@ -21,6 +21,18 @@ Value *CodeGenContext::CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builde
   return value;
 }
 
+Value *CodeGenContext::CreateNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder,
+  Value *value, Type *type)
+{
+  if (type == Type::getInt32Ty(*TheContext)) // int
+    return Builder->CreateICmpNE(
+      value, ConstantInt::get(Type::getInt32Ty(*TheContext), 0, true));
+  if (type == Type::getDoubleTy(*TheContext)) // double
+    return Builder->CreateFCmpONE( // not equial to 0
+      value, ConstantFP::get(Type::getDoubleTy(*TheContext), APFloat(0.0)));
+  return value;
+}
+
 /* Compile the AST into a module */
 void CodeGenContext::generateCode(BlockExprAST &mainBlock)
 {
@@ -34,8 +46,10 @@ void CodeGenContext::generateCode(BlockExprAST &mainBlock)
 
   std::vector<Type *> Args;
   FunctionType *FT = FunctionType::get(Type::getVoidTy(*TheContext), Args, false);
-  Function *TheFunction = Function::Create(FT,
-                                           Function::ExternalLinkage, _mainFunctionName, TheModule.get());
+  Function *TheFunction = Function::Create(
+      FT,Function::ExternalLinkage, _mainFunctionName, TheModule.get());
+  pushFunction(TheFunction);
+
   BasicBlock *bblock = BasicBlock::Create(*TheContext, "entry", TheFunction);
   Builder->SetInsertPoint(bblock);
 
@@ -44,6 +58,7 @@ void CodeGenContext::generateCode(BlockExprAST &mainBlock)
   Value *RetVal = mainBlock.codeGen(*this);
   Builder->CreateRetVoid(); // do not return data pointers to the stack
   popBlock();
+  popFunction();
 
   // Validate the generated code, checking for consistency.
   verifyFunction(*TheFunction);

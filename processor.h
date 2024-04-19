@@ -64,6 +64,7 @@ public:
 
   std::map<std::string, AllocaInst *> NamedValues;
   std::stack<CodeGenBlock *> _blocks;
+  std::stack<Function *> GeneratingFunctions;
   std::map<std::string, FunctionDeclarationAST *> *DefinedFunctions;
   std::vector<NameTable *> NamesByBlock;
 
@@ -77,6 +78,7 @@ public:
   void runCode();
   AllocaInst *CreateBlockAlloca(BasicBlock *BB, Type *type, const std::string &VarName);
   Value *CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builder, Value *value, Type *type);
+  Value *CreateNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder, Value *value, Type *type);
 
   Type *stringTypeToLLVM(const IdentifierExprAST &type);
   std::string print(Type *type);
@@ -86,6 +88,11 @@ public:
   {
     return _blocks.top()->locals;
   }
+
+  Function *currentFunction() { return GeneratingFunctions.top(); }
+  void pushFunction(Function *fn) { GeneratingFunctions.push(fn); }
+  void popFunction() { GeneratingFunctions.pop(); }
+
   BasicBlock *currentBlock() { return _blocks.top()->block; }
   void pushBlock(BasicBlock *block)
   {
