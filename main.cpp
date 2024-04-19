@@ -17,7 +17,7 @@ int main()
     std::cout << "Invalid input. Nothing parsed" << std::endl;
     return 1;
   }
-  context.pp(programBlock);
+  //context.pp(programBlock);
   context.setFunctionList(definedFunctions);
 
   if (context.typeCheck(*programBlock))
