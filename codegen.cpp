@@ -111,6 +111,7 @@ Value *AssignmentAST::codeGen(CodeGenContext &context)
 
 Value *BinaryExprAST::codeGen(CodeGenContext &context)
 {
+  /* integers are i32 and signed */
   logCodegen("expression " + Op + ":");
   Value *L = LHS->codeGen(context);
   Value *R = RHS->codeGen(context);
@@ -138,31 +139,73 @@ Value *BinaryExprAST::codeGen(CodeGenContext &context)
   {
     L = isDoubleType
             ? context.Builder->CreateFAdd(L, R, "addtmp")
-            : context.Builder->CreateAdd(L, R, "addtmp");
+            : context.Builder->CreateAdd(L, R, "iaddtmp");
     return L;
   }
   if (Op.compare("-") == 0)
   {
     L = isDoubleType
             ? context.Builder->CreateFSub(L, R, "subtmp")
-            : context.Builder->CreateSub(L, R, "subtmp");
+            : context.Builder->CreateSub(L, R, "isubtmp");
     return L;
   }
   if (Op.compare("*") == 0)
   {
     L = isDoubleType
             ? context.Builder->CreateFMul(L, R, "multmp")
-            : context.Builder->CreateMul(L, R, "multmp");
+            : context.Builder->CreateMul(L, R, "imultmp");
     return L;
   }
   if (Op.compare("/") == 0)
   {
     L = isDoubleType
             ? context.Builder->CreateFDiv(L, R, "divtmp")
-            : context.Builder->CreateSDiv(L, R, "divtmp");
+            : context.Builder->CreateSDiv(L, R, "idivtmp");
     return L;
   }
-  // TODO: comparison operations
+  // comparison operations
+  if (Op.compare("==") == 0)
+  {
+    L = isDoubleType
+            ? context.Builder->CreateFCmpOEQ(L, R, "eqtmp")
+            : context.Builder->CreateICmpEQ(L, R, "ieqtmp");
+    return L;
+  }
+  if (Op.compare("!=") == 0)
+  {
+    L = isDoubleType
+            ? context.Builder->CreateFCmpONE(L, R, "neqtmp")
+            : context.Builder->CreateICmpNE(L, R, "ineqtmp");
+    return L;
+  }
+  if (Op.compare(">") == 0)
+  {
+    L = isDoubleType
+            ? context.Builder->CreateFCmpOGT(L, R, "gttmp")
+            : context.Builder->CreateICmpSGT(L, R, "igttmp");
+    return L;
+  }
+  if (Op.compare(">=") == 0)
+  {
+    L = isDoubleType
+            ? context.Builder->CreateFCmpOGE(L, R, "getmp")
+            : context.Builder->CreateICmpSGE(L, R, "igetmp");
+    return L;
+  }
+  if (Op.compare("<") == 0)
+  {
+    L = isDoubleType
+            ? context.Builder->CreateFCmpOLT(L, R, "lttmp")
+            : context.Builder->CreateICmpSLT(L, R, "ilttmp");
+    return L;
+  }
+  if (Op.compare("<=") == 0)
+  {
+    L = isDoubleType
+            ? context.Builder->CreateFCmpOLE(L, R, "letmp")
+            : context.Builder->CreateICmpSLE(L, R, "iletmp");
+    return L;
+  }
   std::cerr << "[AST] Operation " << Op << " not supported" << std::endl;
   return nullptr;
 }
