@@ -163,7 +163,7 @@ Value *BinaryExprAST::codeGen(CodeGenContext &context)
             : context.Builder->CreateSDiv(L, R, "idivtmp");
     return L;
   }
-  // comparison operations
+  // comparison operators
   if (Op.compare("==") == 0)
   {
     L = isDoubleType
@@ -367,32 +367,26 @@ Value *IfStatementAST::codeGen(CodeGenContext &context)
   BasicBlock *ElseBB = BasicBlock::Create(*context.TheContext, "else");
   BasicBlock *MergeBB = BasicBlock::Create(*context.TheContext, "ifcont");
 
+  context.Builder->CreateCondBr(condVal, ThenBB, ElseBB);
   // then-block
   context.Builder->SetInsertPoint(ThenBB);
-  Value *IRThen = ThenBlock->codeGen(context);
+  if (ThenBlock)
+    ThenBlock->codeGen(context);
   // finish then-block
   context.Builder->CreateBr(MergeBB);
-  ThenBB = context.Builder->GetInsertBlock();
 
   // codegen for else-block:
   TheFunction->insert(TheFunction->end(), ElseBB);
   context.Builder->SetInsertPoint(ElseBB);
-  Value *IRElse = ElseBlock ? ElseBlock->codeGen(context) : nullptr;
+  if (ElseBlock)
+    ElseBlock->codeGen(context);
+  // finish else-block
   context.Builder->CreateBr(MergeBB);
 
-  // codegen of 'else' can change the current block, update ElseBB for the PHI.
-  ElseBB = context.Builder->GetInsertBlock();
   TheFunction->insert(TheFunction->end(), MergeBB);
   context.Builder->SetInsertPoint(MergeBB);
 
-  // result of the if-else block is a phi node
-  PHINode *PN = context.Builder->CreatePHI(
-    Type::getDoubleTy(*context.TheContext), 2 /*numReservedValues*/, "iftmp");
-
-  PN->addIncoming(IRThen, ThenBB); // block value
-  PN->addIncoming(IRElse, ElseBB);
-
-  return PN;
+  return condVal;
 }
 
 /* typeOf methods */
