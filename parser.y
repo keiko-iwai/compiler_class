@@ -113,6 +113,7 @@ factor : LPAREN expr RPAREN { $$ = $2; }
        | ident { $<ident>$ = $1; }
        | call_expr
        | numeric /* MINUS factor too! But it needs a class to support unary expressions */
+       | MINUS factor { $$ = new UnaryExprAST(*$1, $2); }
        ;
 
 call_expr : ident LPAREN call_args RPAREN { $$ = new CallExprAST(*$1, *$3); delete $3; }

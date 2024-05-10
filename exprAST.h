@@ -28,6 +28,8 @@ public:
 class ExprAST : public NodeAST
 {
   /* parent of expression classes: block, int, double, identifier, method call, binary operation */
+  public:
+  bool isNumeric(CodeGenContext &context, llvm::Type *type);
 };
 
 class StatementAST : public NodeAST
@@ -126,6 +128,17 @@ public:
     std::cout << "\tright: ";
     RHS->pp();
   }
+  llvm::Type *typeOf(CodeGenContext &context) override;
+};
+
+class UnaryExprAST : public ExprAST
+{
+  std::string Op;
+  ExprAST *Expr;
+public:
+  UnaryExprAST(std::string Op, ExprAST *Expr) : Op(Op), Expr(Expr) {}
+  llvm::Value *codeGen(CodeGenContext &context) override;
+  bool typeCheck(CodeGenContext &context) override;
   llvm::Type *typeOf(CodeGenContext &context) override;
 };
 
