@@ -7,8 +7,11 @@ using namespace llvm::orc;
 // #define __LOG_CODEGEN_METHODS 1
 // #define __LOG_TYPECHECK 1
 
+// FIXME: pass the ast node as an argument and pp()
 static void logTypecheck(const std::string &str, bool result) {
 #ifdef __LOG_TYPECHECK
+  if (result)
+    return
   std::cout << "Typecheck on " << str << ", result: " << result << std::endl;
 #endif
 }
@@ -52,9 +55,9 @@ Value *StringExprAST::codeGen(CodeGenContext &context)
   StrHandle->buf = (void *) DataBuf;
   context.AllocatedArrays.push_back(StrHandle);
 
-  llvm::Type *PtrType = Type::getInt64Ty(*context.TheContext);
-  Constant *Addr = ConstantInt::get(PtrType, (int64_t)StrHandle);
-  return ConstantExpr::getIntToPtr(Addr, PointerType::getUnqual(PtrType)); /* fixme: it's a struct pointer, what type is it? */
+  Constant *Addr = ConstantInt::get(Type::getInt64Ty(*context.TheContext), (int64_t)DataBuf);
+  return ConstantExpr::getIntToPtr(Addr,
+    PointerType::getUnqual(Type::getInt8Ty(*context.TheContext))); /* fixme: it's a struct pointer, what type is it? */
 }
 
 Value *IdentifierExprAST::codeGen(CodeGenContext &context)
@@ -343,12 +346,6 @@ Value *CallExprAST::codeGen(CodeGenContext &context)
       {
         val = context.CreateTypeCast(context.Builder, val, expectedType);
       }
-    } else if ((**it).isString(context, argType)) /* external string functions need strings */
-    {
-      llvm::Type *AddrType = Type::getInt64Ty(*context.TheContext);
-      Constant *BufferAddr = ConstantInt::get(AddrType, (int64_t)(**it).DataBuf);
-      val = ConstantExpr::getIntToPtr(BufferAddr, /* cast int64 to int8* */
-        PointerType::getUnqual(Type::getInt8Ty(*context.TheContext)));
     }
     args.push_back(val);
   }
@@ -473,7 +470,7 @@ llvm::Type *DoubleExprAST::typeOf(CodeGenContext &context)
 
 llvm::Type *StringExprAST::typeOf(CodeGenContext &context)
 {
-  return Type::getInt64Ty(*context.TheContext);
+  return PointerType::getUnqual(Type::getInt8Ty(*context.TheContext));
 }
 
 bool ExprAST::isNumeric(CodeGenContext &context, llvm::Type *type) {
@@ -481,7 +478,7 @@ bool ExprAST::isNumeric(CodeGenContext &context, llvm::Type *type) {
 }
 
 bool ExprAST::isString(CodeGenContext &context, llvm::Type *type) {
-  return type == Type::getInt64Ty(*context.TheContext);
+  return type == PointerType::getUnqual(Type::getInt8Ty(*context.TheContext));
 }
 
 llvm::Type *IdentifierExprAST::typeOf(CodeGenContext &context)

@@ -168,7 +168,7 @@ llvm::Type *CodeGenContext::stringTypeToLLVM(const IdentifierExprAST &type)
   if (type.Name.compare("void") == 0)
     return Type::getVoidTy(*TheContext);
   if (type.Name.compare("string") == 0)
-    return Type::getInt64Ty(*TheContext); /* pointer */
+    return PointerType::getUnqual(Type::getInt8Ty(*TheContext)); /* pointer */
 
   std::cerr << "Unknown type: " << type.Name << std::endl;
   return Type::getVoidTy(*TheContext);
