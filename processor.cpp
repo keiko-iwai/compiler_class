@@ -5,14 +5,14 @@
 using namespace llvm;
 using namespace llvm::orc;
 
-AllocaInst *CodeGenContext::CreateBlockAlloca(BasicBlock *BB, Type *type, const std::string &VarName)
+AllocaInst *CodeGenContext::CreateBlockAlloca(BasicBlock *BB, llvm::Type *type, const std::string &VarName)
 {
   IRBuilder<> TmpB(BB, BB->begin());
   return TmpB.CreateAlloca(type, nullptr, VarName);
 }
 
 Value *CodeGenContext::CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builder,
-  Value *value, Type *toType)
+  Value *value, llvm::Type *toType)
 {
   if (toType == Type::getInt32Ty(*TheContext)) // to int
     return Builder->CreateFPToSI(value, toType);
@@ -24,7 +24,7 @@ Value *CodeGenContext::CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builde
 Value *CodeGenContext::CreateNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder,
   Value *value)
 {
-  Type *type = value->getType();
+  llvm::Type *type = value->getType();
   if (type == Type::getInt1Ty(*TheContext))
   {
     return value;
@@ -51,10 +51,10 @@ void CodeGenContext::generateCode(BlockExprAST &mainBlock)
   VariableList args;
   FunctionDeclarationAST *main = new FunctionDeclarationAST(type, name, args, mainBlock);
 
-  std::vector<Type *> Args;
+  std::vector<llvm::Type *> Args;
   FunctionType *FT = FunctionType::get(Type::getVoidTy(*TheContext), Args, false);
   Function *TheFunction = Function::Create(
-      FT,Function::ExternalLinkage, _mainFunctionName, TheModule.get());
+      FT, Function::ExternalLinkage, _mainFunctionName, TheModule.get());
   pushFunction(TheFunction);
 
   BasicBlock *bblock = BasicBlock::Create(*TheContext, "entry", TheFunction);
@@ -159,7 +159,7 @@ void CodeGenContext::runCode()
 }
 
 /* Returns an LLVM type based on the identifier */
-Type *CodeGenContext::stringTypeToLLVM(const IdentifierExprAST &type)
+llvm::Type *CodeGenContext::stringTypeToLLVM(const IdentifierExprAST &type)
 {
   if (type.Name.compare("int") == 0)
   {
@@ -177,10 +177,10 @@ Type *CodeGenContext::stringTypeToLLVM(const IdentifierExprAST &type)
   return Type::getInt32Ty(*TheContext);
 }
 
-bool CodeGenContext::isTypeConversionPossible(Type *a, Type *b)
+bool CodeGenContext::isTypeConversionPossible(llvm::Type *a, llvm::Type *b)
 {
-  Type *intType = Type::getInt32Ty(*TheContext);
-  Type *doubleType = Type::getDoubleTy(*TheContext);
+  llvm::Type *intType = Type::getInt32Ty(*TheContext);
+  llvm::Type *doubleType = Type::getDoubleTy(*TheContext);
   return (a == intType && b == doubleType || a == doubleType && b == intType);
 }
 
@@ -193,7 +193,7 @@ bool CodeGenContext::typeCheck(BlockExprAST &mainBlock)
   return result;
 }
 
-std::string CodeGenContext::print(Type *type)
+std::string CodeGenContext::print(llvm::Type *type)
 {
 if (type == Type::getInt32Ty(*TheContext))
   {

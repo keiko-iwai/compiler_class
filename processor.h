@@ -76,13 +76,13 @@ public:
   bool typeCheck(BlockExprAST &block);
   void generateCode(BlockExprAST &block);
   void runCode();
-  AllocaInst *CreateBlockAlloca(BasicBlock *BB, Type *type, const std::string &VarName);
-  Value *CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builder, Value *value, Type *type);
+  AllocaInst *CreateBlockAlloca(BasicBlock *BB, llvm::Type *type, const std::string &VarName);
+  Value *CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builder, Value *value, llvm::Type *type);
   Value *CreateNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder, Value *value);
 
-  Type *stringTypeToLLVM(const IdentifierExprAST &type);
-  std::string print(Type *type);
-  bool isTypeConversionPossible(Type *a, Type *b);
+  llvm::Type *stringTypeToLLVM(const IdentifierExprAST &type);
+  std::string print(llvm::Type *type);
+  bool isTypeConversionPossible(llvm::Type *a, llvm::Type *b);
 
   std::map<std::string, AllocaInst *> &locals()
   {
