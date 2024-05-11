@@ -34,7 +34,7 @@ Value *BlockExprAST::codeGen(CodeGenContext &context)
 
 Value *IntExprAST::codeGen(CodeGenContext &context)
 {
-  return ConstantInt::get(Type::getInt32Ty(*context.TheContext), Val, true);
+  return ConstantInt::get(Type::getInt32Ty(*context.TheContext), Val, true /*signed*/);
 }
 
 Value *DoubleExprAST::codeGen(CodeGenContext &context)
@@ -358,8 +358,10 @@ Value *IfStatementAST::codeGen(CodeGenContext &context)
 {
   std::cerr << "[AST] IF codegen" << std::endl;
   Value *condVal = Expr->codeGen(context);
+  condVal->print(errs());
+
   // create true/false comparison
-  condVal = context.CreateNonZeroCmp(context.Builder, condVal, Expr->typeOf(context));
+  condVal = context.CreateNonZeroCmp(context.Builder, condVal);
 
   // need a function to be defined
   Function *TheFunction = context.currentFunction(); // current function

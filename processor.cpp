@@ -22,13 +22,20 @@ Value *CodeGenContext::CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builde
 }
 
 Value *CodeGenContext::CreateNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder,
-  Value *value, Type *type)
+  Value *value)
 {
-  if (type == Type::getInt32Ty(*TheContext)) // int
+  Type *type = value->getType();
+  if (type == Type::getInt1Ty(*TheContext))
+  {
+    return value;
+  }
+  if (type == Type::getInt32Ty(*TheContext))
+  {
     return Builder->CreateICmpNE(
-      value, ConstantInt::get(Type::getInt32Ty(*TheContext), 0, true));
-  if (type == Type::getDoubleTy(*TheContext)) // double
-    return Builder->CreateFCmpONE( // not equial to 0
+      value, ConstantInt::get(Type::getInt32Ty(*TheContext), 0, true), "ifexpr");
+  }
+  if (type == Type::getDoubleTy(*TheContext))
+    return Builder->CreateFCmpONE(
       value, ConstantFP::get(Type::getDoubleTy(*TheContext), APFloat(0.0)));
   return value;
 }

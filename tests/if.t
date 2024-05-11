@@ -1,11 +1,20 @@
 int x = 2;
-int y = x > 2;
+int y = x + 2;
 
-if (1) {
+if (x == 1) {
   printi(1);
-} else if (0) {
-  printi(2);
-} else {
-  printi(3);
+  if (y == 0) {
+    printi(0);
+  } else {
+    printi(1);
+  }
 }
 
+if (x == 1) {
+  printi(1);
+  if (y == 0) {
+    printi(0);
+  } else {
+    printi(1);
+  }
+}
