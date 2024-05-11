@@ -31,7 +31,7 @@
    match our tokens.l lex file. We also define the node type
    they represent.
  */
-%token <string> IDENTIFIER INTEGER DOUBLE
+%token <string> IDENTIFIER INTEGER DOUBLE STRINGVAL
 %token <token> LPAREN RPAREN LBRACE TRBRACE COMMA DOT SEMICOLON
 %token <string> EQ NE LT LE GT GE EQUAL
 %token <string> PLUS MINUS MUL DIV
@@ -43,7 +43,7 @@
    calling an (NIdentifier*). It makes the compiler happy.
  */
 %type <ident> ident
-%type <expr> numeric expr add_expr mul_expr comparison_expr factor call_expr
+%type <expr> numeric expr add_expr mul_expr comparison_expr factor call_expr string_val
 %type <block> program stmts block
 %type <func_args> func_decl_args
 %type <expr_list> expr_list
@@ -83,6 +83,9 @@ var_decl : ident ident { $$ = new VarDeclExprAST(*$1, *$2); }
 ident : IDENTIFIER { $$ = new IdentifierExprAST(*$1); delete $1; }
       ;
 
+string_val : STRINGVAL { $$ = new StringExprAST(*$1); delete $1; }
+           ;
+
 numeric : INTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
         | DOUBLE  { $$ = new DoubleExprAST(atol($1->c_str())); delete $1;  }
         ;
@@ -94,12 +97,13 @@ if_stmt : IF LPAREN expr RPAREN block { $$ = new IfStatementAST($3, $5); }
 
 loop_stmt : for_stmt;
 
-for_stmt : FOR LPAREN expr_list SEMICOLON expr SEMICOLON expr_list RPAREN block { $$ = new ForStatementAST(*$3, $5, *$7, $9); }
+for_stmt : FOR LPAREN expr_list SEMICOLON expr SEMICOLON expr_list RPAREN block
+            { $$ = new ForStatementAST(*$3, $5, *$7, $9); }
          ;
 
 /* expressions */
 
-expr : comparison_expr
+expr : comparison_expr | string_val
      | ident EQUAL expr { $$ = new AssignmentAST(*$<ident>1, *$3); }
      ;
 

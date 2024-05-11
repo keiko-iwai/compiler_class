@@ -42,6 +42,21 @@ Value *DoubleExprAST::codeGen(CodeGenContext &context)
   return ConstantFP::get(Type::getDoubleTy(*context.TheContext), Val);
 }
 
+Value *StringExprAST::codeGen(CodeGenContext &context)
+{
+  Array *StrHandle = new Array();
+  StrHandle->length = Val.size();
+  StrHandle->refCount = 1;
+  DataBuf = new char(StrHandle->length);
+  Val.copy(DataBuf, StrHandle->length);
+  StrHandle->buf = (void *) DataBuf;
+  context.AllocatedArrays.push_back(StrHandle);
+
+  llvm::Type *PtrType = Type::getInt64Ty(*context.TheContext);
+  Constant *Addr = ConstantInt::get(PtrType, (int64_t)StrHandle);
+  return ConstantExpr::getIntToPtr(Addr, PointerType::getUnqual(PtrType)); /* fixme: it's a struct pointer, what type is it? */
+}
+
 Value *IdentifierExprAST::codeGen(CodeGenContext &context)
 {
   logCodegen("identifier reference " + Name);
@@ -328,6 +343,12 @@ Value *CallExprAST::codeGen(CodeGenContext &context)
       {
         val = context.CreateTypeCast(context.Builder, val, expectedType);
       }
+    } else if ((**it).isString(context, argType)) /* external string functions need strings */
+    {
+      llvm::Type *AddrType = Type::getInt64Ty(*context.TheContext);
+      Constant *BufferAddr = ConstantInt::get(AddrType, (int64_t)(**it).DataBuf);
+      val = ConstantExpr::getIntToPtr(BufferAddr, /* cast int64 to int8* */
+        PointerType::getUnqual(Type::getInt8Ty(*context.TheContext)));
     }
     args.push_back(val);
   }
@@ -391,7 +412,7 @@ Value *IfStatementAST::codeGen(CodeGenContext &context)
 
 Value *ForStatementAST::codeGen(CodeGenContext &context)
 {
-  std::cout << "[AST] FOR codegen" << std::endl;
+  logCodegen("for");
   ExpressionList::const_iterator it;
   for (it = Before.begin(); it != Before.end(); it++)
   {
@@ -435,7 +456,8 @@ Value *ForStatementAST::codeGen(CodeGenContext &context)
 /* typeOf methods */
 llvm::Type *NodeAST::typeOf(CodeGenContext &context)
 {
-  std::cout << "Default typeOf called! Probably it's a mistake to get the type of the expression " << typeid(this).name() << std::endl;
+  std::cout << "Default typeOf called! Possible mistake. Type of the expression="
+    << typeid(this).name() << std::endl;
   return Type::getVoidTy(*context.TheContext);
 }
 
@@ -449,8 +471,17 @@ llvm::Type *DoubleExprAST::typeOf(CodeGenContext &context)
   return Type::getDoubleTy(*context.TheContext);
 }
 
+llvm::Type *StringExprAST::typeOf(CodeGenContext &context)
+{
+  return Type::getInt64Ty(*context.TheContext);
+}
+
 bool ExprAST::isNumeric(CodeGenContext &context, llvm::Type *type) {
   return type == Type::getDoubleTy(*context.TheContext) || type == Type::getInt32Ty(*context.TheContext);
+}
+
+bool ExprAST::isString(CodeGenContext &context, llvm::Type *type) {
+  return type == Type::getInt64Ty(*context.TheContext);
 }
 
 llvm::Type *IdentifierExprAST::typeOf(CodeGenContext &context)

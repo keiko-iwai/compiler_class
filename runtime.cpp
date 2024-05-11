@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <cstdarg>
 #include <cmath>
 #include "exprAST.h"
 #include "processor.h"
@@ -16,6 +17,8 @@ extern "C"
   {
     return fprintf(stderr, "%f\n", X);
   }
+
+  int printf(const char *fmt, ...);
   double sqrt(double X);
 }
 
@@ -39,4 +42,11 @@ void CodeGenContext::AddRuntime()
           Type::getDoubleTy(*TheContext),
           {Type::getDoubleTy(*TheContext)},
           false));
+  TheModule->getOrInsertFunction(
+      "printf",
+      FunctionType::get(
+        Type::getInt32Ty(*TheContext),
+        {Type::getInt8Ty(*TheContext)->getPointerTo()},
+        true /* variadic func */
+      ));
 }

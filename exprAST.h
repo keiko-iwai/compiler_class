@@ -30,6 +30,8 @@ class ExprAST : public NodeAST
   /* parent of expression classes: block, int, double, identifier, method call, binary operation */
   public:
   bool isNumeric(CodeGenContext &context, llvm::Type *type);
+  bool isString(CodeGenContext &context, llvm::Type *type);
+  char *DataBuf; /* exposed to use in external functions */
 };
 
 class StatementAST : public NodeAST
@@ -93,6 +95,21 @@ public:
     std::cout << "double= " << Val << std::endl;
   }
   llvm::Type *typeOf(CodeGenContext &context) override;
+};
+
+class StringExprAST : public ExprAST
+{
+  std::string Val;
+
+public:
+  StringExprAST(const std::string &Val) : Val(Val) {}
+  llvm::Value *codeGen(CodeGenContext &context) override;
+  llvm::Type *typeOf(CodeGenContext &context) override;
+
+  void pp() override
+  {
+    std::cout << "string= " << Val << std::endl;
+  }
 };
 
 class IdentifierExprAST : public ExprAST

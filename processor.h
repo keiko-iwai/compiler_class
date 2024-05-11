@@ -43,10 +43,17 @@ public:
 };
 
 typedef std::map<std::string, llvm::Type *> NameTable;
+typedef struct {
+  int refCount;
+  int elemSize;
+  int length;
+  int maxLength;
+  void *buf;
+} Array;
+
 class CodeGenContext
 {
   std::string _mainFunctionName = std::string("main");
-  Function *_mainFunction;
 
 public:
   std::unique_ptr<LLVMContext> TheContext;
@@ -67,6 +74,7 @@ public:
   std::stack<Function *> GeneratingFunctions;
   std::map<std::string, FunctionDeclarationAST *> *DefinedFunctions;
   std::vector<NameTable *> NamesByBlock;
+  std::vector<Array *> AllocatedArrays;
 
   CodeGenContext();
   void InitializeModuleAndManagers();

@@ -1,0 +1,1 @@
+printf("Result=%d", 2);
