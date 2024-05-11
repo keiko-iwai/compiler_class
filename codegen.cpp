@@ -397,17 +397,29 @@ Value *ForStatementAST::codeGen(CodeGenContext &context)
   {
     (**it).codeGen(context);
   }
+  Function *TheFunction = context.currentFunction();
+  /* before: x = 1;
+     loop condition: x <= 10
+     loop body: print(x);
+          after: x = x + 1;
+  */
+  BasicBlock *LoopBB = BasicBlock::Create(*context.TheContext, "loop", TheFunction);
+  BasicBlock *BodyBB = BasicBlock::Create(*context.TheContext, "blockLoop");
+  BasicBlock *ExitBB = BasicBlock::Create(*context.TheContext, "afterLoop");
+
+  context.Builder->CreateBr(LoopBB);
+  context.Builder->SetInsertPoint(LoopBB);
+
   // FIXME: support an empty condition and generate the true value
   Value *condVal = Expr->codeGen(context);
   condVal = context.CreateNonZeroCmp(context.Builder, condVal);
-  Function *TheFunction = context.currentFunction(); // current function
-  BasicBlock *LoopBB = BasicBlock::Create(*context.TheContext, "loop", TheFunction);
-  BasicBlock *ExitBB = BasicBlock::Create(*context.TheContext, "afterLoop");
+  context.Builder->CreateCondBr(condVal, BodyBB, ExitBB);
 
-  context.Builder->CreateCondBr(condVal, LoopBB, ExitBB);
-  context.Builder->SetInsertPoint(LoopBB);
+  TheFunction->insert(TheFunction->end(), BodyBB);
+  context.Builder->SetInsertPoint(BodyBB);
   if (Block)
     Block->codeGen(context);
+
   for (it = After.begin(); it != After.end(); it++)
   {
     (**it).codeGen(context);
