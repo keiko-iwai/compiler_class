@@ -22,7 +22,7 @@
     IdentifierExprAST *ident;
     VarDeclExprAST *var_decl;
     VariableList *func_args;
-    ExpressionList *call_args;
+    ExpressionList *expr_list;
     std::string *string;
     int token;
 }
@@ -35,7 +35,7 @@
 %token <token> LPAREN RPAREN LBRACE TRBRACE COMMA DOT SEMICOLON
 %token <string> EQ NE LT LE GT GE EQUAL
 %token <string> PLUS MINUS MUL DIV
-%token <string> RETURN IF ELSE
+%token <string> RETURN IF ELSE FOR
 
 /* Define the type of node our nonterminal symbols represent.
    The types refer to the %union declaration above. Ex: when
@@ -46,8 +46,8 @@
 %type <expr> numeric expr add_expr mul_expr comparison_expr factor call_expr
 %type <block> program stmts block
 %type <func_args> func_decl_args
-%type <call_args> call_args
-%type <stmt> stmt var_decl func_decl return_stmt if_stmt
+%type <expr_list> expr_list
+%type <stmt> stmt var_decl func_decl return_stmt if_stmt loop_stmt for_stmt
 %type <string> comparison_op add_op mul_op
 
 /* Operator precedence for mathematical operators */
@@ -67,7 +67,7 @@ stmts : stmt { $$ = new BlockExprAST(); $$->Statements.push_back($<stmt>1); }
       | stmts stmt { $1->Statements.push_back($<stmt>2); }
       ;
 
-stmt : return_stmt SEMICOLON | func_decl | if_stmt
+stmt : return_stmt SEMICOLON | func_decl | if_stmt | loop_stmt
      | expr SEMICOLON { $$ = new ExpressionStatementAST(*$1); }
      | var_decl SEMICOLON
      ;
@@ -91,6 +91,11 @@ if_stmt : IF LPAREN expr RPAREN block { $$ = new IfStatementAST($3, $5); }
         | IF LPAREN expr RPAREN block ELSE block { $$ = new IfStatementAST($3, $5, $7); }
         | IF LPAREN expr RPAREN block ELSE if_stmt { $$ = new IfStatementAST($3, $5, $7); }
         ;
+
+loop_stmt : for_stmt;
+
+for_stmt : FOR LPAREN expr_list SEMICOLON expr SEMICOLON expr_list RPAREN block { $$ = new ForStatementAST(*$3, $5, *$7, $9); }
+         ;
 
 /* expressions */
 
@@ -116,7 +121,7 @@ factor : LPAREN expr RPAREN { $$ = $2; }
        | MINUS factor { $$ = new UnaryExprAST(*$1, $2); }
        ;
 
-call_expr : ident LPAREN call_args RPAREN { $$ = new CallExprAST(*$1, *$3); delete $3; }
+call_expr : ident LPAREN expr_list RPAREN { $$ = new CallExprAST(*$1, *$3); delete $3; }
           ;
 
 comparison_op : EQ | NE | LT | LE | GT | GE ;
@@ -140,9 +145,9 @@ block : LBRACE stmts TRBRACE { $$ = $2; }
       | LBRACE TRBRACE { $$ = new BlockExprAST(); }
       ;
 
-call_args : /* empty */  { $$ = new ExpressionList(); }
+expr_list : /* empty */  { $$ = new ExpressionList(); }
           | expr { $$ = new ExpressionList(); $$->push_back($1); }
-          | call_args COMMA expr  { $1->push_back($3); }
+          | expr_list COMMA expr  { $1->push_back($3); }
           ;
 
 func_decl_args : /* empty */  { $$ = new VariableList(); }

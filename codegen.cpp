@@ -356,10 +356,8 @@ Value *ReturnStatementAST::codeGen(CodeGenContext &context)
 
 Value *IfStatementAST::codeGen(CodeGenContext &context)
 {
-  std::cerr << "[AST] IF codegen" << std::endl;
+  logCodegen("if");
   Value *condVal = Expr->codeGen(context);
-  condVal->print(errs());
-
   // create true/false comparison
   condVal = context.CreateNonZeroCmp(context.Builder, condVal);
 
@@ -387,6 +385,37 @@ Value *IfStatementAST::codeGen(CodeGenContext &context)
 
   TheFunction->insert(TheFunction->end(), MergeBB);
   context.Builder->SetInsertPoint(MergeBB);
+
+  return condVal;
+}
+
+Value *ForStatementAST::codeGen(CodeGenContext &context)
+{
+  std::cout << "[AST] FOR codegen" << std::endl;
+  ExpressionList::const_iterator it;
+  for (it = Before.begin(); it != Before.end(); it++)
+  {
+    (**it).codeGen(context);
+  }
+  // FIXME: support an empty condition and generate the true value
+  Value *condVal = Expr->codeGen(context);
+  condVal = context.CreateNonZeroCmp(context.Builder, condVal);
+  Function *TheFunction = context.currentFunction(); // current function
+  BasicBlock *LoopBB = BasicBlock::Create(*context.TheContext, "loop", TheFunction);
+  BasicBlock *ExitBB = BasicBlock::Create(*context.TheContext, "afterLoop");
+
+  context.Builder->CreateCondBr(condVal, LoopBB, ExitBB);
+  context.Builder->SetInsertPoint(LoopBB);
+  if (Block)
+    Block->codeGen(context);
+  for (it = After.begin(); it != After.end(); it++)
+  {
+    (**it).codeGen(context);
+  }
+  context.Builder->CreateBr(LoopBB);
+
+  TheFunction->insert(TheFunction->end(), ExitBB);
+  context.Builder->SetInsertPoint(ExitBB);
 
   return condVal;
 }

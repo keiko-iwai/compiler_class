@@ -317,3 +317,42 @@ public:
     }
   }
 };
+
+class ForStatementAST : public StatementAST
+{
+  public:
+  ExprAST *Expr;
+  ExpressionList Before;
+  ExpressionList After;
+  BlockExprAST *Block;
+
+  ForStatementAST(ExpressionList &Before, ExprAST *Expr, ExpressionList &After, BlockExprAST *Block)
+    : Before(Before), Expr(Expr), After(After), Block(Block) {}
+  llvm::Value *codeGen(CodeGenContext &context) override;
+  // no return type
+
+  void pp() override
+  {
+    std::cout << "For loop. Before: \n";
+    ExpressionList::const_iterator it;
+    for (it = Before.begin(); it != Before.end(); it++)
+    {
+      (**it).pp();
+    }
+    std::cout << "Condition: \n";
+    if (Expr)
+    {
+      Expr->pp();
+    }
+    std::cout << "Loop block: \n";
+    if (Block)
+    {
+      Block->pp();
+    }
+    std::cout << "For loop. After: \n";
+    for (it = After.begin(); it != After.end(); it++)
+    {
+      (**it).pp();
+    }
+  }
+};
