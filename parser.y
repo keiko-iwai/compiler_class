@@ -1,6 +1,7 @@
 %define parse.error detailed
 %{
   #include <cstdio>
+  #include <algorithm>
   #include <map>
   #include <string>
   #include "exprAST.h"
@@ -83,8 +84,12 @@ var_decl : ident ident { $$ = new VarDeclExprAST(*$1, *$2); }
 ident : IDENTIFIER { $$ = new IdentifierExprAST(*$1); delete $1; }
       ;
 
-string_val : STRINGVAL { $$ = new StringExprAST(*$1); delete $1; }
-           ;
+string_val : STRINGVAL
+          {
+            std::string str = *$1;
+            str.erase(std::remove(str.begin(), str.end(), '"'), str.end());
+            $$ = new StringExprAST(str); delete $1;
+          };
 
 numeric : INTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
         | DOUBLE  { $$ = new DoubleExprAST(atol($1->c_str())); delete $1;  }

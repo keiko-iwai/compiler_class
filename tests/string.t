@@ -1,4 +1,4 @@
-printf("Result=%d", 2);
+printf("Result=%f", 2.0);
 
 string x = "123";
 printf(x);
