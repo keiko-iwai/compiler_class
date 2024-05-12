@@ -31,7 +31,7 @@ class ExprAST : public NodeAST
   public:
   bool isNumeric(CodeGenContext &context, llvm::Type *type);
   bool isString(CodeGenContext &context, llvm::Type *type);
-  char *DataBuf; /* exposed to use in external functions */
+  const char *DataBuf; /* exposed to use in external functions */
 };
 
 class StatementAST : public NodeAST

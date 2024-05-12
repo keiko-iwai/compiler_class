@@ -50,8 +50,7 @@ Value *StringExprAST::codeGen(CodeGenContext &context)
   Array *StrHandle = new Array();
   StrHandle->length = Val.size();
   StrHandle->refCount = 1;
-  DataBuf = new char(StrHandle->length);
-  Val.copy(DataBuf, StrHandle->length);
+  DataBuf = Val.c_str();
   StrHandle->buf = (void *) DataBuf;
   context.AllocatedArrays.push_back(StrHandle);
 
