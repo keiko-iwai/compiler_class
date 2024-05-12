@@ -259,7 +259,7 @@ llvm::Type *FunctionDeclarationAST::getArgumentType(CodeGenContext &context, int
 Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
 {
   logCodegen("function " + Name.get());
-  // to have the type casts work, typeOf refers the name table
+  // the type casts refer to the name table
   NameTable *Names = new NameTable();
   context.NamesByBlock.push_back(Names);
   std::vector<llvm::Type *> argTypes;

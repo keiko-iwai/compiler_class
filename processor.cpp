@@ -40,13 +40,12 @@ Value *CodeGenContext::CreateNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Buil
   return value;
 }
 
-/* Compile the AST into a module */
 void CodeGenContext::generateCode(BlockExprAST &mainBlock)
 {
   std::cout << "Generating code...\n";
 
   // create main function
-  IdentifierExprAST type = IdentifierExprAST("int");
+  IdentifierExprAST type = IdentifierExprAST("void");
   IdentifierExprAST name = IdentifierExprAST("main");
   VariableList args;
   FunctionDeclarationAST *main = new FunctionDeclarationAST(type, name, args, mainBlock);
@@ -63,13 +62,11 @@ void CodeGenContext::generateCode(BlockExprAST &mainBlock)
   // Push a new variable/block context
   pushBlock(bblock);
   Value *RetVal = mainBlock.codeGen(*this);
-  Builder->CreateRetVoid(); // do not return data pointers to the stack
+  Builder->CreateRetVoid();
   popBlock();
   popFunction();
 
-  // Validate the generated code, checking for consistency.
   verifyFunction(*TheFunction);
-
   TheFunction->print(errs());
   // Run the optimizer on the function.
   // TheFPM->run(*TheFunction, *TheFAM);
@@ -129,32 +126,21 @@ void CodeGenContext::InitializeModuleAndManagers()
   PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
 }
 
-/* Executes the AST by running the main function */
 void CodeGenContext::runCode()
 {
   std::cout << "Running code...\n";
-
-  // execution
   auto RT = TheJIT->getMainJITDylib().createResourceTracker();
-
   auto TSM = ThreadSafeModule(std::move(TheModule), std::move(TheContext));
   ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
   InitializeModuleAndManagers();
 
-  // Search the JIT for the __anon_expr symbol.
   auto ExprSymbol = ExitOnErr(TheJIT->lookup(_mainFunctionName));
-  // assert(ExprSymbol && "Function not found");
-
-  // Get the symbol's address and cast it to the right type (takes no
-  // arguments, returns a double) so we can call it as a native function.
+  // Get the symbol's address and cast it to the right function pointer type and call it as a native function.
   void (*FP)() = ExprSymbol.getAddress().toPtr<void (*)()>();
   FP();
-  std::cout << "Evaluated successfully" << std::endl;
 
-  // Delete the anonymous expression module from the JIT.
+  std::cout << "Main function evaluated successfully\n" << std::endl;
   ExitOnErr(RT->remove());
-
-  std::cout << "Code was run.\n";
   return;
 }
 
@@ -192,18 +178,13 @@ bool CodeGenContext::typeCheck(BlockExprAST &mainBlock)
 
 std::string CodeGenContext::print(llvm::Type *type)
 {
-if (type == Type::getInt32Ty(*TheContext))
-  {
+  if (type == Type::getInt32Ty(*TheContext))
     return std::string("int");
-  }
   if (type == Type::getDoubleTy(*TheContext))
-  {
     return std::string("double");
-  }
   if (type == Type::getVoidTy(*TheContext))
-  {
     return std::string("void");
-  }
-
+  if (type == PointerType::getUnqual(Type::getInt8Ty(*TheContext)))
+    return std::string("string");
   return std::string("unknown type");
 }
