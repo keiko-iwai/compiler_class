@@ -2,3 +2,6 @@
 parser.cpp
 parser.hpp
 tokens.cpp
+main
+compiler
+*.o
