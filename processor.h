@@ -17,6 +17,14 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
+/* compile to object file: */
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/TargetParser/Host.h"
+/* -compile to object file: */
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -85,6 +93,7 @@ public:
   bool typeCheck(BlockExprAST &block);
   void generateCode(BlockExprAST &block);
   void runCode();
+  void writeObjFile(BlockExprAST &block);
   AllocaInst *CreateBlockAlloca(BasicBlock *BB, llvm::Type *type, const std::string &VarName);
   Value *CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builder, Value *value, llvm::Type *type);
   Value *CreateNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder, Value *value);

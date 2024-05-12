@@ -1,6 +1,7 @@
 #include "exprAST.h"
 #include "processor.h"
 #include "parser.hpp"
+#include "runtime.h"
 
 using namespace llvm;
 using namespace llvm::orc;
@@ -51,13 +52,13 @@ void CodeGenContext::generateCode(BlockExprAST &mainBlock)
   std::cout << "Generating code...\n";
 
   // create main function
-  IdentifierExprAST type = IdentifierExprAST("void");
+  IdentifierExprAST type = IdentifierExprAST("int");
   IdentifierExprAST name = IdentifierExprAST("main");
   VariableList args;
   FunctionDeclarationAST *main = new FunctionDeclarationAST(type, name, args, mainBlock);
 
   std::vector<llvm::Type *> Args;
-  FunctionType *FT = FunctionType::get(Type::getVoidTy(*TheContext), Args, false);
+  FunctionType *FT = FunctionType::get(Type::getInt32Ty(*TheContext), Args, false);
   Function *TheFunction = Function::Create(
       FT, Function::ExternalLinkage, _mainFunctionName, TheModule.get());
   pushFunction(TheFunction);
@@ -142,12 +143,66 @@ void CodeGenContext::runCode()
 
   auto ExprSymbol = ExitOnErr(TheJIT->lookup(_mainFunctionName));
   // Get the symbol's address and cast it to the right function pointer type and call it as a native function.
-  void (*FP)() = ExprSymbol.getAddress().toPtr<void (*)()>();
-  FP();
+  int (*FP)() = ExprSymbol.getAddress().toPtr<int (*)()>();
+  int result = FP();
 
-  std::cout << "Main function evaluated successfully\n" << std::endl;
+  std::cout << std::endl << "Main function evaluated successfully to " << result << std::endl;
   ExitOnErr(RT->remove());
   return;
+}
+
+void CodeGenContext::writeObjFile(BlockExprAST &mainBlock)
+{
+  std::cout << "Writing object file...\n";
+  TheModule = std::make_unique<Module>("_llvm_obj_module", *TheContext);
+  InitializeAllTargetInfos();
+  InitializeAllTargets();
+  InitializeAllTargetMCs();
+  InitializeAllAsmParsers();
+  InitializeAllAsmPrinters();
+
+  auto TargetTriple = sys::getDefaultTargetTriple();
+  TheModule->setTargetTriple(TargetTriple);
+
+  std::string Error;
+  auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
+  if (!Target) {
+    errs() << Error;
+    return;
+  }
+
+  auto CPU = "generic";
+  auto Features = "";
+
+  TargetOptions opt;
+  auto TheTargetMachine = Target->createTargetMachine(
+      TargetTriple, CPU, Features, opt, Reloc::PIC_);
+
+  TheModule->setDataLayout(TheTargetMachine->createDataLayout());
+  //AddRuntime();
+  generateCode(mainBlock);
+
+  auto Filename = "output.o";
+  std::error_code EC;
+  raw_fd_ostream dest(Filename, EC, sys::fs::OF_None);
+
+  if (EC) {
+    errs() << "Could not open file: " << EC.message();
+    return;
+  }
+
+  legacy::PassManager pass;
+  auto FileType = CodeGenFileType::ObjectFile;
+
+  if (TheTargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
+    errs() << "TheTargetMachine can't emit a file of this type";
+    return;
+  }
+
+  pass.run(*TheModule);
+  dest.flush();
+
+  std::cout << "Wrote " << Filename << "\n";
 }
 
 /* Returns an LLVM type based on the identifier */
@@ -193,4 +248,41 @@ std::string CodeGenContext::print(llvm::Type *type)
   if (type == PointerType::getUnqual(Type::getInt8Ty(*TheContext)))
     return std::string("string");
   return std::string("unknown type");
+}
+
+/* define functions in runtime.cpp */
+void CodeGenContext::AddRuntime()
+{
+  TheModule->getOrInsertFunction(
+      "printi",
+      FunctionType::get(
+          Type::getInt32Ty(*TheContext),
+          {Type::getInt32Ty(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
+      "printd",
+      FunctionType::get(
+          Type::getInt32Ty(*TheContext),
+          {Type::getDoubleTy(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
+      "sqrt",
+      FunctionType::get(
+          Type::getDoubleTy(*TheContext),
+          {Type::getDoubleTy(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
+      "print",
+      FunctionType::get(
+        Type::getInt32Ty(*TheContext),
+        {Type::getInt8Ty(*TheContext)->getPointerTo()},
+        true /* variadic func */
+      ));
+  TheModule->getOrInsertFunction(
+      "println",
+      FunctionType::get(
+        Type::getInt32Ty(*TheContext),
+        {Type::getInt8Ty(*TheContext)->getPointerTo()},
+        true /* variadic func */
+      ));
 }

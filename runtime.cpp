@@ -1,10 +1,7 @@
 #include <cstdio>
 #include <cstdarg>
 #include <cmath>
-#include "exprAST.h"
-#include "processor.h"
-
-using namespace llvm;
+/* Compile runtime.cpp separately when compiling to an object file */
 
 extern "C"
 {
@@ -37,40 +34,4 @@ extern "C"
     return result;
   }
   double sqrt(double X);
-}
-
-void CodeGenContext::AddRuntime()
-{
-  TheModule->getOrInsertFunction(
-      "printi",
-      FunctionType::get(
-          Type::getInt32Ty(*TheContext),
-          {Type::getInt32Ty(*TheContext)},
-          false));
-  TheModule->getOrInsertFunction(
-      "printd",
-      FunctionType::get(
-          Type::getInt32Ty(*TheContext),
-          {Type::getDoubleTy(*TheContext)},
-          false));
-  TheModule->getOrInsertFunction(
-      "sqrt",
-      FunctionType::get(
-          Type::getDoubleTy(*TheContext),
-          {Type::getDoubleTy(*TheContext)},
-          false));
-  TheModule->getOrInsertFunction(
-      "print",
-      FunctionType::get(
-        Type::getInt32Ty(*TheContext),
-        {Type::getInt8Ty(*TheContext)->getPointerTo()},
-        true /* variadic func */
-      ));
-  TheModule->getOrInsertFunction(
-      "println",
-      FunctionType::get(
-        Type::getInt32Ty(*TheContext),
-        {Type::getInt8Ty(*TheContext)->getPointerTo()},
-        true /* variadic func */
-      ));
 }

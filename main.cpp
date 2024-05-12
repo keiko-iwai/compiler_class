@@ -29,5 +29,6 @@ int main()
   }
 
   context.runCode();
+  context.writeObjFile(*programBlock);
   return 0;
 }
