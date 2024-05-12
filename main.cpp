@@ -21,7 +21,7 @@ int main()
   context.setFunctionList(definedFunctions);
 
   if (context.typeCheck(*programBlock))
-    context.generateCode(*programBlock);
+    context.generateCode(*programBlock, false);
   else
   {
     std::cout << "Type errors found. Can not run code." << std::endl;

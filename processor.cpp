@@ -47,9 +47,10 @@ Value *CodeGenContext::CreateNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Buil
   return value;
 }
 
-void CodeGenContext::generateCode(BlockExprAST &mainBlock)
+void CodeGenContext::generateCode(BlockExprAST &mainBlock, bool withOptimization)
 {
-  std::cout << "Generating code...\n";
+  std::cout << "Generating code..." << std::endl;;
+  objCount = 0;
 
   // create main function
   IdentifierExprAST type = IdentifierExprAST("int");
@@ -65,19 +66,27 @@ void CodeGenContext::generateCode(BlockExprAST &mainBlock)
 
   BasicBlock *bblock = BasicBlock::Create(*TheContext, "entry", TheFunction);
   Builder->SetInsertPoint(bblock);
-
   // Push a new variable/block context
   pushBlock(bblock);
-  Value *RetVal = mainBlock.codeGen(*this);
-  Builder->CreateRetVoid();
+
+  mainBlock.codeGen(*this);
+  Value *RetVal = ConstantInt::get(Type::getInt32Ty(*TheContext), 0, true);
+  Builder->CreateRet(RetVal);
+  verifyFunction(*TheFunction);
+
+  // Run the optimizer on the function.
+  if (withOptimization) {
+    TheFPM->run(*TheFunction, *TheFAM);
+  }
+  TheFunction->print(errs());
+  if (withOptimization)
+    std::cout << "Optimized code is generated." << std::endl;
+  else
+    std::cout << "Code is generated." << std::endl;
+
+  // cleanup; there may be multiple calls of generateCode
   popBlock();
   popFunction();
-
-  verifyFunction(*TheFunction);
-  TheFunction->print(errs());
-  // Run the optimizer on the function.
-  // TheFPM->run(*TheFunction, *TheFAM);
-  std::cout << "Code is generated.\n";
 }
 
 void CodeGenContext::pp(BlockExprAST *block)
@@ -91,20 +100,11 @@ CodeGenContext::CodeGenContext()
   InitializeNativeTargetAsmPrinter();
   InitializeNativeTargetAsmParser();
   TheJIT = ExitOnErr(SimpleJIT::Create());
-  InitializeModuleAndManagers();
+  InitializeForJIT();
 }
 
-void CodeGenContext::InitializeModuleAndManagers()
+void CodeGenContext::InitializePassManagers()
 {
-  // Open a new context and module.
-  TheContext = std::make_unique<LLVMContext>();
-  TheModule = std::make_unique<Module>("SimpleJIT", *TheContext);
-  TheModule->setDataLayout(TheJIT->getDataLayout());
-  AddRuntime();
-
-  // Create a new builder for the module.
-  Builder = std::make_unique<IRBuilder<>>(*TheContext);
-
   // Create new pass and analysis managers.
   TheFPM = std::make_unique<FunctionPassManager>();
   TheLAM = std::make_unique<LoopAnalysisManager>();
@@ -133,13 +133,26 @@ void CodeGenContext::InitializeModuleAndManagers()
   PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
 }
 
+void CodeGenContext::InitializeForJIT()
+{
+  // Open a new context and module.
+  TheContext = std::make_unique<LLVMContext>();
+  TheModule = std::make_unique<Module>("SimpleJIT", *TheContext);
+  TheModule->setDataLayout(TheJIT->getDataLayout());
+  AddRuntime();
+
+  // Create a new builder for the module.
+  Builder = std::make_unique<IRBuilder<>>(*TheContext);
+  InitializePassManagers();
+}
+
 void CodeGenContext::runCode()
 {
   std::cout << "Running code...\n";
   auto RT = TheJIT->getMainJITDylib().createResourceTracker();
   auto TSM = ThreadSafeModule(std::move(TheModule), std::move(TheContext));
   ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
-  InitializeModuleAndManagers();
+  InitializeForJIT();
 
   auto ExprSymbol = ExitOnErr(TheJIT->lookup(_mainFunctionName));
   // Get the symbol's address and cast it to the right function pointer type and call it as a native function.
@@ -179,8 +192,9 @@ void CodeGenContext::writeObjFile(BlockExprAST &mainBlock)
       TargetTriple, CPU, Features, opt, Reloc::PIC_);
 
   TheModule->setDataLayout(TheTargetMachine->createDataLayout());
-  //AddRuntime();
-  generateCode(mainBlock);
+  AddRuntime();
+  InitializePassManagers();
+  generateCode(mainBlock, true);
 
   auto Filename = "output.o";
   std::error_code EC;

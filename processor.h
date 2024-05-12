@@ -86,12 +86,13 @@ public:
   std::vector<Array *> AllocatedArrays;
 
   CodeGenContext();
-  void InitializeModuleAndManagers();
+  void InitializePassManagers();
+  void InitializeForJIT();
   void AddRuntime();
 
   void pp(BlockExprAST *block);
   bool typeCheck(BlockExprAST &block);
-  void generateCode(BlockExprAST &block);
+  void generateCode(BlockExprAST &block, bool withOptimization);
   void runCode();
   void writeObjFile(BlockExprAST &block);
   AllocaInst *CreateBlockAlloca(BasicBlock *BB, llvm::Type *type, const std::string &VarName);
