@@ -47,6 +47,7 @@ Value *DoubleExprAST::codeGen(CodeGenContext &context)
 
 Value *StringExprAST::codeGen(CodeGenContext &context)
 {
+  // fixme: this is actually a constant
   Array *StrHandle = new Array();
   StrHandle->length = Val.size();
   StrHandle->refCount = 1;

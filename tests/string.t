@@ -1,7 +1,7 @@
-printf("Result=%f\n", 2.0);
+println("Result=%f", 2.0);
 
 string x = "String 1";
-printf(x);
+println(x);
 
 
 string f1() {
@@ -9,4 +9,4 @@ string f1() {
 }
 
 string y = f1();
-printf(y);
+print(y);

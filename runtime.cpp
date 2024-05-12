@@ -10,15 +10,32 @@ extern "C"
 {
   int printi(int X)
   {
-    return fprintf(stderr, "%d\n", X);
+    return printf("%d\n", X);
   }
 
   int printd(double X)
   {
-    return fprintf(stderr, "%f\n", X);
+    return printf("%f\n", X);
   }
 
-  int printf(const char *fmt, ...);
+  int print(const char *fmt, ...) {
+    int result = 0;
+    va_list args;
+    va_start(args, fmt);
+    result = vprintf(fmt, args);
+    va_end(args);
+    return result;
+  }
+
+  int println(const char *fmt, ...) {
+    int result = 0;
+    va_list args;
+    va_start(args, fmt);
+    result = vprintf(fmt, args);
+    va_end(args);
+    putchar('\n');
+    return result;
+  }
   double sqrt(double X);
 }
 
@@ -43,7 +60,14 @@ void CodeGenContext::AddRuntime()
           {Type::getDoubleTy(*TheContext)},
           false));
   TheModule->getOrInsertFunction(
-      "printf",
+      "print",
+      FunctionType::get(
+        Type::getInt32Ty(*TheContext),
+        {Type::getInt8Ty(*TheContext)->getPointerTo()},
+        true /* variadic func */
+      ));
+  TheModule->getOrInsertFunction(
+      "println",
       FunctionType::get(
         Type::getInt32Ty(*TheContext),
         {Type::getInt8Ty(*TheContext)->getPointerTo()},
