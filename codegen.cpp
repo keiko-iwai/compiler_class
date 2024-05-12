@@ -47,17 +47,25 @@ Value *DoubleExprAST::codeGen(CodeGenContext &context)
 
 Value *StringExprAST::codeGen(CodeGenContext &context)
 {
-  // fixme: this is actually a constant
-  Array *StrHandle = new Array();
-  StrHandle->length = Val.size();
-  StrHandle->refCount = 1;
-  DataBuf = Val.c_str();
-  StrHandle->buf = (void *) DataBuf;
-  context.AllocatedArrays.push_back(StrHandle);
+  // create a string global variable; return a link to it
+  auto charType = Type::getInt8Ty(*context.TheContext);
 
-  Constant *Addr = ConstantInt::get(Type::getInt64Ty(*context.TheContext), (int64_t)DataBuf);
-  return ConstantExpr::getIntToPtr(Addr,
-    PointerType::getUnqual(Type::getInt8Ty(*context.TheContext))); /* fixme: it's a struct pointer, what type is it? */
+  std::vector<llvm::Constant *> chars(Val.size());
+  for(int i = 0; i < Val.size(); i++) {
+    chars[i] = ConstantInt::get(charType, Val[i]);
+  }
+  // Add \0
+  chars.push_back(ConstantInt::get(charType, 0));
+
+  auto stringType = ArrayType::get(charType, chars.size());
+  std::string name = context.genStrConstantName();
+  auto globalDeclaration = (GlobalVariable *) context.TheModule->getOrInsertGlobal(name, stringType);
+  globalDeclaration->setInitializer(ConstantArray::get(stringType, chars));
+  globalDeclaration->setConstant(true);
+  globalDeclaration->setLinkage(llvm::GlobalValue::LinkageTypes::PrivateLinkage);
+  globalDeclaration->setUnnamedAddr (llvm::GlobalValue::UnnamedAddr::Global);
+  // Return a cast to an i8*
+  return llvm::ConstantExpr::getBitCast(globalDeclaration, charType->getPointerTo());
 }
 
 Value *IdentifierExprAST::codeGen(CodeGenContext &context)
@@ -305,9 +313,7 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
   }
 
   if (RetVal)
-  {
     context.Builder->CreateRet(RetVal);
-  }
   else
     context.Builder->CreateRetVoid();
   verifyFunction(*TheFunction);

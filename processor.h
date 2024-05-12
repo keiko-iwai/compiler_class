@@ -54,6 +54,7 @@ typedef struct {
 class CodeGenContext
 {
   std::string _mainFunctionName = std::string("main");
+  int objCount = 0;
 
 public:
   std::unique_ptr<LLVMContext> TheContext;
@@ -87,6 +88,7 @@ public:
   AllocaInst *CreateBlockAlloca(BasicBlock *BB, llvm::Type *type, const std::string &VarName);
   Value *CreateTypeCast(std::unique_ptr<IRBuilder<>> const &Builder, Value *value, llvm::Type *type);
   Value *CreateNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder, Value *value);
+  const std::string genStrConstantName();
 
   llvm::Type *stringTypeToLLVM(const IdentifierExprAST &type);
   std::string print(llvm::Type *type);

@@ -5,6 +5,12 @@
 using namespace llvm;
 using namespace llvm::orc;
 
+const std::string CodeGenContext::genStrConstantName()
+{
+  objCount ++;
+  return "_str" + std::to_string(objCount);
+}
+
 AllocaInst *CodeGenContext::CreateBlockAlloca(BasicBlock *BB, llvm::Type *type, const std::string &VarName)
 {
   IRBuilder<> TmpB(BB, BB->begin());
