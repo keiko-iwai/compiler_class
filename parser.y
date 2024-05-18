@@ -4,7 +4,7 @@
   #include <algorithm>
   #include <map>
   #include <string>
-  #include "exprAST.h"
+  #include "AST.h"
 
   BlockExprAST *programBlock;
   FunctionMap *definedFunctions = new FunctionMap();

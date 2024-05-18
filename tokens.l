@@ -1,7 +1,7 @@
 %option noinput nounput noyywrap nodefault yylineno
 %{
 #include <string>
-#include "exprAST.h"
+#include "AST.h"
 #include "parser.hpp"
 
 static int next_column = 1;

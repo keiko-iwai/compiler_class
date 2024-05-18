@@ -1,667 +1,302 @@
-#include "exprAST.h"
-#include "processor.h"
+#include "AST.h"
+#include "codegen.h"
+#include "parser.hpp"
+#include "runtime.h"
+
 using namespace llvm;
 using namespace llvm::orc;
 
-/* uncomment to print */
-// #define __LOG_CODEGEN_METHODS 1
-// #define __LOG_TYPECHECK 1
-
-// FIXME: pass the ast node as an argument and pp()
-static void logTypecheck(const std::string &str, bool result) {
-#ifdef __LOG_TYPECHECK
-  if (result)
-    return
-  std::cout << "Typecheck on " << str << ", result: " << result << std::endl;
-#endif
-}
-
-static void logCodegen(const std::string &str) {
-#ifdef __LOG_CODEGEN_METHODS
-  std::cout << "Codegen: " << str << std::endl;
-#endif
-}
-
-/* codegen methods */
-Value *BlockExprAST::codeGen(CodeGenContext &context)
+const std::string Codegen::genStrConstantName()
 {
-  StatementList::const_iterator it;
-  Value *last = nullptr;
-  for (it = Statements.begin(); it != Statements.end(); it++)
-  {
-    last = (**it).codeGen(context);
-  }
-  logCodegen("block");
-  return last;
+  ConstObjCount ++;
+  return "_str" + std::to_string(ConstObjCount);
 }
 
-Value *IntExprAST::codeGen(CodeGenContext &context)
+AllocaInst *Codegen::createBlockAlloca(BasicBlock *BB, llvm::Type *type, const std::string &VarName)
 {
-  return ConstantInt::get(Type::getInt32Ty(*context.TheContext), Val, true /*signed*/);
+  IRBuilder<> TmpB(BB, BB->begin());
+  return TmpB.CreateAlloca(type, nullptr, VarName);
 }
 
-Value *DoubleExprAST::codeGen(CodeGenContext &context)
+Value *Codegen::createTypeCast(std::unique_ptr<IRBuilder<>> const &Builder,
+  Value *value, llvm::Type *toType)
 {
-  return ConstantFP::get(Type::getDoubleTy(*context.TheContext), Val);
+  if (toType == Type::getInt32Ty(*TheContext)) // to int
+    return Builder->CreateFPToSI(value, toType);
+  if (toType == Type::getDoubleTy(*TheContext)) // to double
+    return Builder->CreateSIToFP(value, toType);
+  return value;
 }
 
-Value *StringExprAST::codeGen(CodeGenContext &context)
+Value *Codegen::createNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder,
+  Value *value)
 {
-  // create a string global variable; return a link to it
-  auto charType = Type::getInt8Ty(*context.TheContext);
-
-  std::vector<llvm::Constant *> chars(Val.size());
-  for(int i = 0; i < Val.size(); i++) {
-    chars[i] = ConstantInt::get(charType, Val[i]);
+  llvm::Type *type = value->getType();
+  if (type == Type::getInt1Ty(*TheContext))
+  {
+    return value;
   }
-  // Add \0
-  chars.push_back(ConstantInt::get(charType, 0));
-
-  auto stringType = ArrayType::get(charType, chars.size());
-  std::string name = context.genStrConstantName();
-  auto globalDeclaration = (GlobalVariable *) context.TheModule->getOrInsertGlobal(name, stringType);
-  globalDeclaration->setInitializer(ConstantArray::get(stringType, chars));
-  globalDeclaration->setConstant(true);
-  globalDeclaration->setLinkage(llvm::GlobalValue::LinkageTypes::PrivateLinkage);
-  globalDeclaration->setUnnamedAddr (llvm::GlobalValue::UnnamedAddr::Global);
-  // Return a cast to an i8*
-  return llvm::ConstantExpr::getBitCast(globalDeclaration, charType->getPointerTo());
+  if (type == Type::getInt32Ty(*TheContext))
+  {
+    return Builder->CreateICmpNE(
+      value, ConstantInt::get(Type::getInt32Ty(*TheContext), 0, true), "ifexpr");
+  }
+  if (type == Type::getDoubleTy(*TheContext))
+    return Builder->CreateFCmpONE(
+      value, ConstantFP::get(Type::getDoubleTy(*TheContext), APFloat(0.0)));
+  return value;
 }
 
-Value *IdentifierExprAST::codeGen(CodeGenContext &context)
+void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization)
 {
-  logCodegen("identifier reference " + Name);
-  CodeGenBlock *TheBlock = context._blocks.top();
-  AllocaInst *Alloca = TheBlock->locals[Name];
+  std::cout << "Generating code..." << std::endl;;
+  ConstObjCount = 0;
 
-  if (!Alloca)
-  {
-    Alloca = context.NamedValues[Name];
-  }
+  // create main function
+  IdentifierExprAST type = IdentifierExprAST("int");
+  IdentifierExprAST name = IdentifierExprAST("main");
+  VariableList args;
+  FunctionDeclarationAST *main = new FunctionDeclarationAST(type, name, args, mainBlock);
 
-  if (!Alloca)
-  {
-    std::cerr << "[AST] Undeclared variable " << Name << std::endl;
-    return nullptr;
-  }
-  return context.Builder->CreateLoad(Alloca->getAllocatedType(), Alloca, Name.c_str());
-}
-
-Value *ExpressionStatementAST::codeGen(CodeGenContext &context)
-{
-  return Statement.codeGen(context);
-}
-
-Value *VarDeclExprAST::codeGen(CodeGenContext &context)
-{
-  logCodegen("variable declaration " + Name.get());
-  CodeGenBlock *TheBlock = context._blocks.top();
-  AllocaInst *Alloca = context.CreateBlockAlloca(
-      TheBlock->block, context.stringTypeToLLVM(TypeName), Name.get().c_str());
-  TheBlock->locals[Name.get()] = Alloca;
-
-  if (AssignmentExpr)
-  {
-    AssignmentAST assignment(Name, *AssignmentExpr);
-    assignment.codeGen(context);
-  }
-  return Alloca;
-}
-
-Value *AssignmentAST::codeGen(CodeGenContext &context)
-{
-  logCodegen("assignment for " + LHS.Name);
-  CodeGenBlock *TheBlock = context._blocks.top();
-
-  AllocaInst *Alloca = TheBlock->locals[LHS.Name];
-  if (!Alloca)
-  {
-    std::cerr << "[AST] Undeclared variable " << LHS.Name << std::endl;
-    return nullptr;
-  }
-
-  Value *value = RHS.codeGen(context);
-  llvm::Type *resultType = Alloca->getAllocatedType();
-  if (RHS.typeOf(context) != resultType)
-  {
-    value = context.CreateTypeCast(context.Builder, value, resultType);
-  }
-
-  if (!value)
-  {
-    std::cerr << "[AST] Not generated value for " << LHS.Name << std::endl;
-    return nullptr;
-  }
-  return context.Builder->CreateStore(value, Alloca);
-}
-
-Value *BinaryExprAST::codeGen(CodeGenContext &context)
-{
-  /* integers are i32 and signed */
-  logCodegen("expression " + Op + ":");
-  Value *L = LHS->codeGen(context);
-  Value *R = RHS->codeGen(context);
-  if (!L || !R)
-  {
-    std::cerr << "[AST] Empty codegen for L=" << L << " and R=" << R << std::endl;
-    return nullptr;
-  }
-
-  bool needCastToDouble = false;
-  llvm::Type *doubleType = Type::getDoubleTy(*context.TheContext);
-  llvm::Type *Ltype = LHS->typeOf(context);
-  llvm::Type *Rtype = RHS->typeOf(context);
-  if (Ltype != Rtype)
-  {
-    needCastToDouble = true;
-    if (Ltype != doubleType)
-      L = context.CreateTypeCast(context.Builder, L, doubleType);
-    if (Rtype != doubleType)
-      R = context.CreateTypeCast(context.Builder, R, doubleType);
-  }
-
-  bool isDoubleType = needCastToDouble || doubleType == Ltype;
-  if (Op.compare("+") == 0)
-  {
-    L = isDoubleType
-      ? context.Builder->CreateFAdd(L, R, "addtmp")
-      : context.Builder->CreateAdd(L, R, "iaddtmp");
-    return L;
-  }
-  if (Op.compare("-") == 0)
-  {
-    L = isDoubleType
-      ? context.Builder->CreateFSub(L, R, "subtmp")
-      : context.Builder->CreateSub(L, R, "isubtmp");
-    return L;
-  }
-  if (Op.compare("*") == 0)
-  {
-    L = isDoubleType
-      ? context.Builder->CreateFMul(L, R, "multmp")
-      : context.Builder->CreateMul(L, R, "imultmp");
-    return L;
-  }
-  if (Op.compare("/") == 0)
-  {
-    L = isDoubleType
-      ? context.Builder->CreateFDiv(L, R, "divtmp")
-      : context.Builder->CreateSDiv(L, R, "idivtmp");
-    return L;
-  }
-  // comparison operators
-  if (Op.compare("==") == 0)
-  {
-    L = isDoubleType
-      ? context.Builder->CreateFCmpOEQ(L, R, "eqtmp")
-      : context.Builder->CreateICmpEQ(L, R, "ieqtmp");
-    return L;
-  }
-  if (Op.compare("!=") == 0)
-  {
-    L = isDoubleType
-      ? context.Builder->CreateFCmpONE(L, R, "neqtmp")
-      : context.Builder->CreateICmpNE(L, R, "ineqtmp");
-    return L;
-  }
-  if (Op.compare(">") == 0)
-  {
-    L = isDoubleType
-      ? context.Builder->CreateFCmpOGT(L, R, "gttmp")
-      : context.Builder->CreateICmpSGT(L, R, "igttmp");
-    return L;
-  }
-  if (Op.compare(">=") == 0)
-  {
-    L = isDoubleType
-      ? context.Builder->CreateFCmpOGE(L, R, "getmp")
-      : context.Builder->CreateICmpSGE(L, R, "igetmp");
-    return L;
-  }
-  if (Op.compare("<") == 0)
-  {
-    L = isDoubleType
-      ? context.Builder->CreateFCmpOLT(L, R, "lttmp")
-      : context.Builder->CreateICmpSLT(L, R, "ilttmp");
-    return L;
-  }
-  if (Op.compare("<=") == 0)
-  {
-    L = isDoubleType
-      ? context.Builder->CreateFCmpOLE(L, R, "letmp")
-      : context.Builder->CreateICmpSLE(L, R, "iletmp");
-    return L;
-  }
-  std::cerr << "[AST] Operation " << Op << " not supported" << std::endl;
-  return nullptr;
-}
-
-
-Value *UnaryExprAST::codeGen(CodeGenContext &context)
-{
-  logCodegen("expression " + Op + ":");
-  Value *Val = Expr->codeGen(context);
-  if (!Val)
-  {
-    std::cerr << "[AST] Empty codegen for Val=" << Expr << std::endl;
-    return nullptr;
-  }
-
-  bool isDoubleType = Type::getDoubleTy(*context.TheContext) == Expr->typeOf(context);
-  if (Op.compare("-") == 0)
-  {
-    Val = isDoubleType
-            ? context.Builder->CreateFNeg(Val, "negation")
-            : context.Builder->CreateNeg(Val, "negation");
-    return Val;
-  }
-  std::cerr << "[AST] Unary operation " << Op << " is not supported" << std::endl;
-  return nullptr;
-}
-
-llvm::Type *FunctionDeclarationAST::getArgumentType(CodeGenContext &context, int idx)
-{
-  return context.stringTypeToLLVM(Arguments[idx]->TypeName.get());
-}
-
-Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
-{
-  logCodegen("function " + Name.get());
-  // the type casts refer to the name table
-  NameTable *Names = new NameTable();
-  context.NameTypesByBlock.push_back(Names);
-  std::vector<llvm::Type *> argTypes;
-  VariableList::const_iterator it;
-  for (it = Arguments.begin(); it != Arguments.end(); it++)
-  {
-    // types
-    argTypes.push_back(context.stringTypeToLLVM((**it).TypeName));
-    // nametable
-    (*Names)[(**it).Name.get()] = context.stringTypeToLLVM((**it).TypeName);
-  }
-
-  FunctionType *FT = FunctionType::get(context.stringTypeToLLVM(TypeName), argTypes, false);
+  std::vector<llvm::Type *> Args;
+  FunctionType *FT = FunctionType::get(Type::getInt32Ty(*TheContext), Args, false);
   Function *TheFunction = Function::Create(
-      FT, GlobalValue::ExternalLinkage, Name.get(), context.TheModule.get());
-  context.pushFunction(TheFunction);
+      FT, Function::ExternalLinkage, MainFunctionName, TheModule.get());
+  pushFunction(TheFunction);
 
-  BasicBlock *bblock = BasicBlock::Create(*context.TheContext, "entry", TheFunction);
-  context.Builder->SetInsertPoint(bblock);
-  context.pushBlock(bblock);
+  BasicBlock *bblock = BasicBlock::Create(*TheContext, "entry", TheFunction);
+  Builder->SetInsertPoint(bblock);
+  // Push a new variable/block context
+  pushBlock(bblock);
 
-  CodeGenBlock *TheBlock = context._blocks.top();
-  TheBlock->locals.clear();
-
-  unsigned idx = 0;
-  for (auto &Arg : TheFunction->args())
-  {
-    std::string name = Arguments[idx]->Name.get();
-    AllocaInst *Alloca = context.CreateBlockAlloca(
-        TheBlock->block, argTypes[idx], name);
-
-    Arg.setName(name);
-    context.Builder->CreateStore(&Arg, Alloca);
-    TheBlock->locals[name] = Alloca;
-    idx++;
-  }
-
-  Value *RetVal = Block.codeGen(context);
-  llvm::Type *returnType = context.stringTypeToLLVM(TypeName);
-  llvm::Type *blockType = Block.typeOf(context);
-  if (blockType != returnType && context.isTypeConversionPossible(blockType, returnType)) {
-    RetVal = context.CreateTypeCast(context.Builder, RetVal, returnType);
-  }
-
-  if (RetVal)
-    context.Builder->CreateRet(RetVal);
-  else
-    context.Builder->CreateRetVoid();
+  mainBlock.createIR(*this);
+  Value *RetVal = ConstantInt::get(Type::getInt32Ty(*TheContext), 0, true);
+  Builder->CreateRet(RetVal);
   verifyFunction(*TheFunction);
 
+  // Run the optimizer on the function.
+  if (withOptimization) {
+    TheFPM->run(*TheFunction, *TheFAM);
+  }
   TheFunction->print(errs());
+  if (withOptimization)
+    std::cout << "Optimized code is generated." << std::endl;
+  else
+    std::cout << "Code is generated." << std::endl;
 
-  context.popFunction();
-  context.popBlock();
-  context.NameTypesByBlock.pop_back();
-  context.Builder->SetInsertPoint(context.currentBlock());
-  return TheFunction;
+  // cleanup; there may be multiple calls of generateCode
+  popBlock();
+  popFunction();
 }
 
-Value *CallExprAST::codeGen(CodeGenContext &context)
+void Codegen::pp(BlockExprAST *block)
 {
-  logCodegen("function call " + Name.get());
-  Function *function = context.TheModule->getFunction(Name.get().c_str());
-  if (!function)
-  {
-    std::cerr << "[AST] Function " << Name.get() << " not found" << std::endl;
-    return nullptr;
+  block->pp();
+}
+
+Codegen::Codegen()
+{
+  InitializeNativeTarget();
+  InitializeNativeTargetAsmPrinter();
+  InitializeNativeTargetAsmParser();
+  TheJIT = ExitOnErr(SimpleJIT::Create());
+  initializeForJIT();
+}
+
+void Codegen::initializePassManagers()
+{
+  // Create new pass and analysis managers.
+  TheFPM = std::make_unique<FunctionPassManager>();
+  TheLAM = std::make_unique<LoopAnalysisManager>();
+  TheFAM = std::make_unique<FunctionAnalysisManager>();
+  TheCGAM = std::make_unique<CGSCCAnalysisManager>();
+  TheMAM = std::make_unique<ModuleAnalysisManager>();
+  ThePIC = std::make_unique<PassInstrumentationCallbacks>();
+  TheSI = std::make_unique<StandardInstrumentations>(*TheContext,
+                                                     /*DebugLogging*/ true);
+  TheSI->registerCallbacks(*ThePIC, TheMAM.get());
+
+  // Add transform passes.
+  // Do simple "peephole" optimizations and bit-twiddling optzns.
+  TheFPM->addPass(InstCombinePass());
+  // Reassociate expressions.
+  TheFPM->addPass(ReassociatePass());
+  // Eliminate Common SubExpressions.
+  TheFPM->addPass(GVNPass());
+  // Simplify the control flow graph (deleting unreachable blocks, etc).
+  TheFPM->addPass(SimplifyCFGPass());
+
+  // Register analysis passes used in these transform passes.
+  PassBuilder PB;
+  PB.registerModuleAnalyses(*TheMAM);
+  PB.registerFunctionAnalyses(*TheFAM);
+  PB.crossRegisterProxies(*TheLAM, *TheFAM, *TheCGAM, *TheMAM);
+}
+
+void Codegen::initializeForJIT()
+{
+  // Open a new context and module.
+  TheContext = std::make_unique<LLVMContext>();
+  TheModule = std::make_unique<Module>("SimpleJIT", *TheContext);
+  TheModule->setDataLayout(TheJIT->getDataLayout());
+  addRuntime();
+
+  // Create a new builder for the module.
+  Builder = std::make_unique<IRBuilder<>>(*TheContext);
+  initializePassManagers();
+}
+
+void Codegen::runCode()
+{
+  std::cout << "Running code...\n";
+  auto RT = TheJIT->getMainJITDylib().createResourceTracker();
+  auto TSM = ThreadSafeModule(std::move(TheModule), std::move(TheContext));
+  ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
+  initializeForJIT();
+
+  auto ExprSymbol = ExitOnErr(TheJIT->lookup(MainFunctionName));
+  // Get the symbol's address and cast it to the right function pointer type and call it as a native function.
+  int (*FP)() = ExprSymbol.getAddress().toPtr<int (*)()>();
+  int result = FP();
+
+  std::cout << std::endl << "Main function evaluated successfully to " << result << std::endl;
+  ExitOnErr(RT->remove());
+  return;
+}
+
+void Codegen::writeObjFile(BlockExprAST &mainBlock)
+{
+  std::cout << "Writing object file...\n";
+  TheModule = std::make_unique<Module>("_llvm_obj_module", *TheContext);
+  InitializeAllTargetInfos();
+  InitializeAllTargets();
+  InitializeAllTargetMCs();
+  InitializeAllAsmParsers();
+  InitializeAllAsmPrinters();
+
+  auto TargetTriple = sys::getDefaultTargetTriple();
+  TheModule->setTargetTriple(TargetTriple);
+
+  std::string Error;
+  auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
+  if (!Target) {
+    errs() << Error;
+    return;
   }
-  FunctionDeclarationAST *fnDecl = (*context.DefinedFunctions)[Name.get()];
 
-  std::vector<Value *> args;
-  int idx = 0;
-  ExpressionList::const_iterator it;
-  for (it = Arguments.begin(); it != Arguments.end(); it++, idx++)
-  {
-    Value *val = (**it).codeGen(context);
-    llvm::Type *argType = (**it).typeOf(context);
-    if (fnDecl)
-    {
-      llvm::Type *expectedType = fnDecl->getArgumentType(context, idx);
-      if (argType != expectedType && context.isTypeConversionPossible(argType, expectedType))
-      {
-        val = context.CreateTypeCast(context.Builder, val, expectedType);
-      }
-    }
-    args.push_back(val);
-  }
-  CallInst *call = context.Builder->CreateCall(function, args, Name.get());
-  return call;
-}
+  auto CPU = "generic";
+  auto Features = "";
 
-Value *ReturnStatementAST::codeGen(CodeGenContext &context)
-{
-  logCodegen("return");
-  if (!Expr)
-  {
-    context.Builder->CreateRetVoid();
-    return nullptr;
+  TargetOptions opt;
+  auto TheTargetMachine = Target->createTargetMachine(
+      TargetTriple, CPU, Features, opt, Reloc::PIC_);
+
+  TheModule->setDataLayout(TheTargetMachine->createDataLayout());
+  addRuntime();
+  initializePassManagers();
+  generateCode(mainBlock, true);
+
+  auto Filename = "output.o";
+  std::error_code EC;
+  raw_fd_ostream dest(Filename, EC, sys::fs::OF_None);
+
+  if (EC) {
+    errs() << "Could not open file: " << EC.message();
+    return;
   }
 
-  Value *RetVal = Expr->codeGen(context);
-  if (RetVal)
-  {
-    context.Builder->CreateRet(RetVal);
-    return RetVal;
+  legacy::PassManager pass;
+  auto FileType = CodeGenFileType::ObjectFile;
+
+  if (TheTargetMachine->addPassesToEmitFile(pass, dest, nullptr, FileType)) {
+    errs() << "TheTargetMachine can't emit a file of this type";
+    return;
   }
-  std::cerr << "[AST] Failed to generate return result " << std::endl;
-  return nullptr;
+
+  pass.run(*TheModule);
+  dest.flush();
+
+  std::cout << "Wrote " << Filename << "\n";
 }
 
-Value *IfStatementAST::codeGen(CodeGenContext &context)
+/* Returns an LLVM type based on the identifier */
+llvm::Type *Codegen::stringTypeToLLVM(const IdentifierExprAST &type)
 {
-  logCodegen("if");
-  Value *condVal = Expr->codeGen(context);
-  // create true/false comparison
-  condVal = context.CreateNonZeroCmp(context.Builder, condVal);
+  if (type.Name.compare("int") == 0)
+    return Type::getInt32Ty(*TheContext);
+  if (type.Name.compare("double") == 0)
+    return Type::getDoubleTy(*TheContext);
+  if (type.Name.compare("void") == 0)
+    return Type::getVoidTy(*TheContext);
+  if (type.Name.compare("string") == 0)
+    return PointerType::getUnqual(Type::getInt8Ty(*TheContext)); /* pointer */
 
-  // need a function to be defined
-  Function *TheFunction = context.currentFunction(); // current function
-  BasicBlock *ThenBB = BasicBlock::Create(*context.TheContext, "then", TheFunction);
-  BasicBlock *ElseBB = BasicBlock::Create(*context.TheContext, "else");
-  BasicBlock *MergeBB = BasicBlock::Create(*context.TheContext, "ifcont");
-
-  context.Builder->CreateCondBr(condVal, ThenBB, ElseBB);
-  // then-block
-  context.Builder->SetInsertPoint(ThenBB);
-  if (ThenBlock)
-    ThenBlock->codeGen(context);
-  // finish then-block
-  context.Builder->CreateBr(MergeBB);
-
-  // codegen for else-block:
-  TheFunction->insert(TheFunction->end(), ElseBB);
-  context.Builder->SetInsertPoint(ElseBB);
-  if (ElseBlock)
-    ElseBlock->codeGen(context);
-  // finish else-block
-  context.Builder->CreateBr(MergeBB);
-
-  TheFunction->insert(TheFunction->end(), MergeBB);
-  context.Builder->SetInsertPoint(MergeBB);
-
-  return condVal;
+  std::cerr << "Unknown type: " << type.Name << std::endl;
+  return Type::getVoidTy(*TheContext);
 }
 
-Value *ForStatementAST::codeGen(CodeGenContext &context)
+bool Codegen::isTypeConversionPossible(llvm::Type *a, llvm::Type *b)
 {
-  logCodegen("for");
-  ExpressionList::const_iterator it;
-  for (it = Before.begin(); it != Before.end(); it++)
-  {
-    (**it).codeGen(context);
-  }
-  Function *TheFunction = context.currentFunction();
-  /* before: x = 1;
-     loop condition: x <= 10
-     loop body: print(x);
-          after: x = x + 1;
-  */
-  BasicBlock *LoopBB = BasicBlock::Create(*context.TheContext, "loop", TheFunction);
-  BasicBlock *BodyBB = BasicBlock::Create(*context.TheContext, "blockLoop");
-  BasicBlock *ExitBB = BasicBlock::Create(*context.TheContext, "afterLoop");
-
-  context.Builder->CreateBr(LoopBB);
-  context.Builder->SetInsertPoint(LoopBB);
-
-  // FIXME: support an empty condition and generate the true value
-  Value *condVal = Expr->codeGen(context);
-  condVal = context.CreateNonZeroCmp(context.Builder, condVal);
-  context.Builder->CreateCondBr(condVal, BodyBB, ExitBB);
-
-  TheFunction->insert(TheFunction->end(), BodyBB);
-  context.Builder->SetInsertPoint(BodyBB);
-  if (Block)
-    Block->codeGen(context);
-
-  for (it = After.begin(); it != After.end(); it++)
-  {
-    (**it).codeGen(context);
-  }
-  context.Builder->CreateBr(LoopBB);
-
-  TheFunction->insert(TheFunction->end(), ExitBB);
-  context.Builder->SetInsertPoint(ExitBB);
-
-  return condVal;
+  llvm::Type *intType = Type::getInt32Ty(*TheContext);
+  llvm::Type *doubleType = Type::getDoubleTy(*TheContext);
+  return (a == intType && b == doubleType || a == doubleType && b == intType);
 }
 
-/* typeOf methods */
-llvm::Type *NodeAST::typeOf(CodeGenContext &context)
+bool Codegen::typeCheck(BlockExprAST &mainBlock)
 {
-  std::cout << "Default typeOf called! Possible mistake. Type of the expression="
-    << typeid(this).name() << std::endl;
-  return Type::getVoidTy(*context.TheContext);
-}
-
-llvm::Type *IntExprAST::typeOf(CodeGenContext &context)
-{
-  return Type::getInt32Ty(*context.TheContext);
-}
-
-llvm::Type *DoubleExprAST::typeOf(CodeGenContext &context)
-{
-  return Type::getDoubleTy(*context.TheContext);
-}
-
-llvm::Type *StringExprAST::typeOf(CodeGenContext &context)
-{
-  return PointerType::getUnqual(Type::getInt8Ty(*context.TheContext));
-}
-
-bool ExprAST::isNumeric(CodeGenContext &context, llvm::Type *type) {
-  return type == Type::getDoubleTy(*context.TheContext) || type == Type::getInt32Ty(*context.TheContext);
-}
-
-bool ExprAST::isString(CodeGenContext &context, llvm::Type *type) {
-  return type == PointerType::getUnqual(Type::getInt8Ty(*context.TheContext));
-}
-
-llvm::Type *IdentifierExprAST::typeOf(CodeGenContext &context)
-{
-  std::vector<NameTable *>::const_iterator it;
-  llvm::Type *type = nullptr;
-  for (it = context.NameTypesByBlock.begin(); it != context.NameTypesByBlock.end(); it++)
-  {
-    type = (**it)[Name];
-    if (type)
-      return type;
-  }
-  std::cerr << "[AST] Unknown variable " << Name << std::endl;
-  return type;
-}
-
-llvm::Type *BinaryExprAST::typeOf(CodeGenContext &context)
-{
-  if (!typeCheck(context))
-  {
-    std::cerr << "[AST] Failed type check in expession " << Op << std::endl;
-    return Type::getVoidTy(*context.TheContext);
-  }
-  llvm::Type *LType = LHS->typeOf(context);
-  llvm::Type *RType = RHS->typeOf(context);
-  return (LType == RType) ? LType : Type::getDoubleTy(*context.TheContext);
-}
-
-llvm::Type *UnaryExprAST::typeOf(CodeGenContext &context)
-{
-  if (!typeCheck(context))
-  {
-    std::cerr << "[AST] Failed type check in expession " << Op << std::endl;
-    return Type::getVoidTy(*context.TheContext);
-  }
-  return Expr->typeOf(context);
-}
-
-llvm::Type *ExpressionStatementAST::typeOf(CodeGenContext &context)
-{
-  return Statement.typeOf(context);
-}
-
-llvm::Type *CallExprAST::typeOf(CodeGenContext &context)
-{
-  std::string name = Name.get();
-  FunctionDeclarationAST *function = (*context.DefinedFunctions)[name];
-  if (function)
-    return context.stringTypeToLLVM(function->TypeName.get());
-
-  Function *externalFn = context.TheModule->getFunction(name.c_str());
-  if (externalFn)
-    return externalFn->getReturnType();
-
-  std::cerr << "Typecheck on call expression: function " << name << " not found" << std::endl;
-  return nullptr;
-}
-
-llvm::Type *BlockExprAST::typeOf(CodeGenContext &context)
-{
-  StatementAST *last = Statements.back();
-  return last->typeOf(context);
-}
-
-llvm::Type *ReturnStatementAST::typeOf(CodeGenContext &context)
-{
-  if (!Expr)
-    return Type::getVoidTy(*context.TheContext);
-  llvm::Type *t = Expr->typeOf(context);
-  return Expr->typeOf(context);
-}
-
-bool BlockExprAST::typeCheck(CodeGenContext &context)
-{
-  StatementList::const_iterator it;
-  bool result = true;
-  for (it = Statements.begin(); it != Statements.end(); it++)
-  {
-    result = result && (**it).typeCheck(context);
-    if (!result)
-      break;
-  }
-  logTypecheck("block", result);
-  return result;
-}
-
-bool BinaryExprAST::typeCheck(CodeGenContext &context)
-{
-  llvm::Type *L = LHS->typeOf(context);
-  llvm::Type *R = RHS->typeOf(context);
-  bool result = L == R || context.isTypeConversionPossible(L, R);
-  logTypecheck("expression " + Op, result);
-  return result;
-}
-
-bool UnaryExprAST::typeCheck(CodeGenContext &context)
-{
-  llvm::Type *ExprType = Expr->typeOf(context);
-  return (Op.compare("-") == 0) && isNumeric(context, ExprType);
-}
-
-bool AssignmentAST::typeCheck(CodeGenContext &context)
-{
-  llvm::Type *L = LHS.typeOf(context);
-  llvm::Type *R = RHS.typeOf(context);
-  bool result = L == R || context.isTypeConversionPossible(L, R);
-  logTypecheck("assignment " + LHS.Name, result);
-  return result;
-}
-
-bool VarDeclExprAST::typeCheck(CodeGenContext &context)
-{
-  bool assignmentResult = AssignmentExpr->typeCheck(context);
-  if (!assignmentResult)
-    return assignmentResult;
-
-  NameTable *currentBlockTable = context.NameTypesByBlock.back();
-  (*currentBlockTable)[Name.get()] = context.stringTypeToLLVM(TypeName);
-
-  llvm::Type *L = context.stringTypeToLLVM(TypeName);
-  llvm::Type *R = AssignmentExpr->typeOf(context);
-
-  bool result = L == R || context.isTypeConversionPossible(L, R);
-  logTypecheck("var decl " + Name.get(), result);
-  return result;
-}
-
-bool FunctionDeclarationAST::typeCheck(CodeGenContext &context)
-{
+  // construct the name => type table for the main block
   NameTable *Names = new NameTable();
-  context.NameTypesByBlock.push_back(Names);
-
-  VariableList::const_iterator it;
-  for (it = Arguments.begin(); it != Arguments.end(); it++)
-  {
-    (*Names)[(**it).Name.get()] = context.stringTypeToLLVM((**it).TypeName);
-  }
-
-  bool result = Block.typeCheck(context);
-  llvm::Type *FNType = context.stringTypeToLLVM(TypeName);
-  llvm::Type *Ret = Block.typeOf(context);
-  result = result && (FNType == Ret || context.isTypeConversionPossible(FNType, Ret));
-  context.NameTypesByBlock.pop_back();
-
-  logTypecheck("function return type " + Name.get(), result);
+  NameTypesByBlock.push_back(Names);
+  bool result = mainBlock.typeCheck(*this);
   return result;
 }
 
-bool CallExprAST::typeCheck(CodeGenContext &context)
+std::string Codegen::print(llvm::Type *type)
 {
-  FunctionDeclarationAST *function = (*context.DefinedFunctions)[Name.get()];
-  if (!function) // external function
-  {
-    return true;
-  }
+  if (type == Type::getInt32Ty(*TheContext))
+    return std::string("int");
+  if (type == Type::getDoubleTy(*TheContext))
+    return std::string("double");
+  if (type == Type::getVoidTy(*TheContext))
+    return std::string("void");
+  if (type == PointerType::getUnqual(Type::getInt8Ty(*TheContext)))
+    return std::string("string");
+  return std::string("unknown type");
+}
 
-  ExpressionList::const_iterator it;
-  int idx = 0;
-  for (it = Arguments.begin(); it != Arguments.end(); it++, idx++)
-  {
-    if (!function->Arguments[idx])
-    {
-      std::cerr << "Typecheck on function call " << Name.get() << " failed: number of arguments is wrong." << std::endl;
-      return false;
-    }
-    llvm::Type *valueType = (**it).typeOf(context);
-    // the nametable of function arguments does not exist outside.
-    // We obtain the text name of the type and convert to LLVM llvm::Type *
-    llvm::Type *argType = function->getArgumentType(context, idx);
-    if (valueType != argType && !context.isTypeConversionPossible(valueType, argType))
-    {
-      std::cerr << "Typecheck on function call " << Name.get() << " failed: argument type "
-        << function->Arguments[idx]->Name.get() << " is wrong " << std::endl;
-      return false;
-    }
-  }
-
-  logTypecheck("function call " + Name.get(), true);
-  return true;
+/* define functions in runtime.cpp */
+void Codegen::addRuntime()
+{
+  TheModule->getOrInsertFunction(
+      "printi",
+      FunctionType::get(
+          Type::getInt32Ty(*TheContext),
+          {Type::getInt32Ty(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
+      "printd",
+      FunctionType::get(
+          Type::getInt32Ty(*TheContext),
+          {Type::getDoubleTy(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
+      "sqrt",
+      FunctionType::get(
+          Type::getDoubleTy(*TheContext),
+          {Type::getDoubleTy(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
+      "print",
+      FunctionType::get(
+        Type::getInt32Ty(*TheContext),
+        {Type::getInt8Ty(*TheContext)->getPointerTo()},
+        true /* variadic func */
+      ));
+  TheModule->getOrInsertFunction(
+      "println",
+      FunctionType::get(
+        Type::getInt32Ty(*TheContext),
+        {Type::getInt8Ty(*TheContext)->getPointerTo()},
+        true /* variadic func */
+      ));
 }

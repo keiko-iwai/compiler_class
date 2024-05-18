@@ -1,6 +1,6 @@
 #include <iostream>
-#include "exprAST.h"
-#include "processor.h"
+#include "AST.h"
+#include "codegen.h"
 
 extern BlockExprAST *programBlock;
 extern FunctionMap *definedFunctions;
@@ -8,7 +8,7 @@ extern int yyparse();
 
 int main()
 {
-  CodeGenContext context;
+  Codegen context;
 
   yyparse();
 
