@@ -114,11 +114,7 @@ public:
   std::string print(llvm::Type *type);
   bool isTypeConversionPossible(llvm::Type *a, llvm::Type *b);
 
-  std::map<std::string, AllocaInst *> &locals()
-  {
-    return GeneratingBlocks.top()->locals;
-  }
-
+  /* current block and function */
   Function *currentFunction() { return GeneratingFunctions.top(); }
   void pushFunction(Function *fn) { GeneratingFunctions.push(fn); }
   void popFunction() { GeneratingFunctions.pop(); }
