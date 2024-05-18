@@ -597,6 +597,9 @@ bool AssignmentAST::typeCheck(Codegen &context)
 
 bool VarDeclExprAST::typeCheck(Codegen &context)
 {
+  if (!AssignmentExpr)
+    return true;
+
   bool assignmentResult = AssignmentExpr->typeCheck(context);
   if (!assignmentResult)
     return assignmentResult;
