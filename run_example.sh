@@ -2,7 +2,7 @@
 echo "...................................."
 echo Compile strings.t to object file:
 echo "...................................."
-./compiler < ./tests/string.t
+./compiler < ./tests/basic_string.t
 echo "...................................."
 echo Compile object file with runtime:
 echo "...................................."
