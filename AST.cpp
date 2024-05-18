@@ -597,15 +597,14 @@ bool AssignmentAST::typeCheck(Codegen &context)
 
 bool VarDeclExprAST::typeCheck(Codegen &context)
 {
+  NameTable *currentBlockTable = context.NameTypesByBlock.back();
+  (*currentBlockTable)[Name.get()] = context.stringTypeToLLVM(TypeName);
+
   if (!AssignmentExpr)
     return true;
 
-  bool assignmentResult = AssignmentExpr->typeCheck(context);
-  if (!assignmentResult)
-    return assignmentResult;
-
-  NameTable *currentBlockTable = context.NameTypesByBlock.back();
-  (*currentBlockTable)[Name.get()] = context.stringTypeToLLVM(TypeName);
+  if (!AssignmentExpr->typeCheck(context))
+    return false;
 
   llvm::Type *L = context.stringTypeToLLVM(TypeName);
   llvm::Type *R = AssignmentExpr->typeOf(context);
