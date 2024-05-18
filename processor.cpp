@@ -61,7 +61,7 @@ void CodeGenContext::generateCode(BlockExprAST &mainBlock, bool withOptimization
   std::vector<llvm::Type *> Args;
   FunctionType *FT = FunctionType::get(Type::getInt32Ty(*TheContext), Args, false);
   Function *TheFunction = Function::Create(
-      FT, Function::ExternalLinkage, _mainFunctionName, TheModule.get());
+      FT, Function::ExternalLinkage, mainFunctionName, TheModule.get());
   pushFunction(TheFunction);
 
   BasicBlock *bblock = BasicBlock::Create(*TheContext, "entry", TheFunction);
@@ -154,7 +154,7 @@ void CodeGenContext::runCode()
   ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
   InitializeForJIT();
 
-  auto ExprSymbol = ExitOnErr(TheJIT->lookup(_mainFunctionName));
+  auto ExprSymbol = ExitOnErr(TheJIT->lookup(mainFunctionName));
   // Get the symbol's address and cast it to the right function pointer type and call it as a native function.
   int (*FP)() = ExprSymbol.getAddress().toPtr<int (*)()>();
   int result = FP();
@@ -246,7 +246,7 @@ bool CodeGenContext::typeCheck(BlockExprAST &mainBlock)
 {
   // construct the name => type table for the main block
   NameTable *Names = new NameTable();
-  NamesByBlock.push_back(Names);
+  NameTypesByBlock.push_back(Names);
   bool result = mainBlock.typeCheck(*this);
   return result;
 }

@@ -269,7 +269,7 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
   logCodegen("function " + Name.get());
   // the type casts refer to the name table
   NameTable *Names = new NameTable();
-  context.NamesByBlock.push_back(Names);
+  context.NameTypesByBlock.push_back(Names);
   std::vector<llvm::Type *> argTypes;
   VariableList::const_iterator it;
   for (it = Arguments.begin(); it != Arguments.end(); it++)
@@ -322,7 +322,7 @@ Value *FunctionDeclarationAST::codeGen(CodeGenContext &context)
 
   context.popFunction();
   context.popBlock();
-  context.NamesByBlock.pop_back();
+  context.NameTypesByBlock.pop_back();
   context.Builder->SetInsertPoint(context.currentBlock());
   return TheFunction;
 }
@@ -491,7 +491,7 @@ llvm::Type *IdentifierExprAST::typeOf(CodeGenContext &context)
 {
   std::vector<NameTable *>::const_iterator it;
   llvm::Type *type = nullptr;
-  for (it = context.NamesByBlock.begin(); it != context.NamesByBlock.end(); it++)
+  for (it = context.NameTypesByBlock.begin(); it != context.NameTypesByBlock.end(); it++)
   {
     type = (**it)[Name];
     if (type)
@@ -601,7 +601,7 @@ bool VarDeclExprAST::typeCheck(CodeGenContext &context)
   if (!assignmentResult)
     return assignmentResult;
 
-  NameTable *currentBlockTable = context.NamesByBlock.back();
+  NameTable *currentBlockTable = context.NameTypesByBlock.back();
   (*currentBlockTable)[Name.get()] = context.stringTypeToLLVM(TypeName);
 
   llvm::Type *L = context.stringTypeToLLVM(TypeName);
@@ -615,7 +615,7 @@ bool VarDeclExprAST::typeCheck(CodeGenContext &context)
 bool FunctionDeclarationAST::typeCheck(CodeGenContext &context)
 {
   NameTable *Names = new NameTable();
-  context.NamesByBlock.push_back(Names);
+  context.NameTypesByBlock.push_back(Names);
 
   VariableList::const_iterator it;
   for (it = Arguments.begin(); it != Arguments.end(); it++)
@@ -627,7 +627,7 @@ bool FunctionDeclarationAST::typeCheck(CodeGenContext &context)
   llvm::Type *FNType = context.stringTypeToLLVM(TypeName);
   llvm::Type *Ret = Block.typeOf(context);
   result = result && (FNType == Ret || context.isTypeConversionPossible(FNType, Ret));
-  context.NamesByBlock.pop_back();
+  context.NameTypesByBlock.pop_back();
 
   logTypecheck("function return type " + Name.get(), result);
   return result;

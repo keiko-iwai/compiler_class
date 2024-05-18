@@ -61,13 +61,10 @@ typedef struct {
 
 class CodeGenContext
 {
-  std::string _mainFunctionName = std::string("main");
+  std::string mainFunctionName = std::string("main");
   int objCount = 0;
 
-public:
-  std::unique_ptr<LLVMContext> TheContext;
-  std::unique_ptr<Module> TheModule;
-  std::unique_ptr<IRBuilder<>> Builder;
+  /* LLVM modules and JIT module */
   std::unique_ptr<SimpleJIT> TheJIT;
   std::unique_ptr<FunctionPassManager> TheFPM;
   std::unique_ptr<LoopAnalysisManager> TheLAM;
@@ -78,13 +75,23 @@ public:
   std::unique_ptr<StandardInstrumentations> TheSI;
   ExitOnError ExitOnErr;
 
+public:
+  /* LLVM resources */
+  std::unique_ptr<LLVMContext> TheContext;
+  std::unique_ptr<Module> TheModule;
+  std::unique_ptr<IRBuilder<>> Builder;
+
+  /* symbol tables */
   std::map<std::string, AllocaInst *> NamedValues;
-  std::stack<CodeGenBlock *> _blocks;
-  std::stack<Function *> GeneratingFunctions;
   std::map<std::string, FunctionDeclarationAST *> *DefinedFunctions;
-  std::vector<NameTable *> NamesByBlock;
+  std::vector<NameTable *> NameTypesByBlock;
   std::vector<Array *> AllocatedArrays;
 
+  /* data structures for tracking the current block and function */
+  std::stack<CodeGenBlock *> _blocks;
+  std::stack<Function *> GeneratingFunctions;
+
+  /* methods */
   CodeGenContext();
   void InitializePassManagers();
   void InitializeForJIT();
