@@ -5,17 +5,20 @@
   #include <map>
   #include <string>
   #include "AST.h"
+  #include "error.h"
 
   BlockExprAST *programBlock;
   FunctionMap *definedFunctions = new FunctionMap();
 
-  extern int yylineno;
-  extern int column;
-  extern int yylex();
-  void yyerror(const char *str) {
-    printf("[Bison] Line %d, column %d: %s\n", yylineno, column, str);
+  extern void yyerror(const char *str) {
+    //printf("[Bison] Line %d, column %d: %s\n", yylineno, column, str);
+    PrintError(str);
   }
+
 %}
+/* generate include-file with symbols and types for locations to work */
+%locations
+
 %union {
     ExprAST *expr;
     BlockExprAST *block;

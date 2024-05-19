@@ -1,6 +1,6 @@
 #include "AST.h"
 #include "codegen.h"
-#include "parser.hpp"
+#include "parser.h"
 #include "runtime.h"
 
 using namespace llvm;

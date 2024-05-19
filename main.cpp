@@ -1,6 +1,8 @@
 #include <iostream>
+#include <cstdlib>
 #include "AST.h"
 #include "codegen.h"
+#include "error.h"
 
 extern BlockExprAST *programBlock;
 extern FunctionMap *definedFunctions;
@@ -10,11 +12,13 @@ int main()
 {
   Codegen context;
 
-  yyparse();
+  buffer = (char *)malloc(lMaxBuffer);
+  while (getNextLine() == 0 && !parseError)
+    yyparse();
 
-  if (!programBlock)
+  if (!programBlock || parseError)
   {
-    std::cout << "Invalid input. Nothing parsed" << std::endl;
+    // no message here as printError() function will print the parser errors
     return 1;
   }
   //context.pp(programBlock);
@@ -30,5 +34,6 @@ int main()
 
   context.runCode();
   context.writeObjFile(*programBlock);
+  free(buffer);
   return 0;
 }

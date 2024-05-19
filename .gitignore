@@ -1,6 +1,6 @@
 *.out
 parser.cpp
-parser.hpp
+parser.h
 tokens.cpp
 main
 compiler
