@@ -75,7 +75,7 @@ extern "C"
     initialize();
     fgets(inputbuf, MAX_STRLEN, stdin);
     int length = strlen(inputbuf);
-    x = (char *)malloc(strlen(inputbuf) * sizeof(char));
+    x = (char *)malloc((strlen(inputbuf) + 1) * sizeof(char));
     strncpy(x, inputbuf, length + 1);
     return x;
   }
