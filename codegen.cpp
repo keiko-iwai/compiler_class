@@ -267,6 +267,38 @@ std::string Codegen::print(llvm::Type *type)
 /* define functions in runtime.cpp */
 void Codegen::addRuntime()
 {
+  /* MATH */
+  TheModule->getOrInsertFunction(
+      "pow",
+      FunctionType::get(
+          Type::getDoubleTy(*TheContext),
+          {Type::getDoubleTy(*TheContext), Type::getDoubleTy(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
+      "sqrt",
+      FunctionType::get(
+          Type::getDoubleTy(*TheContext),
+          {Type::getDoubleTy(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
+      "sin",
+      FunctionType::get(
+          Type::getDoubleTy(*TheContext),
+          {Type::getDoubleTy(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
+      "cos",
+      FunctionType::get(
+          Type::getDoubleTy(*TheContext),
+          {Type::getDoubleTy(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
+      "pi",
+      FunctionType::get(
+          Type::getDoubleTy(*TheContext),
+          {},
+          false));
+  /* IO */
   TheModule->getOrInsertFunction(
       "printi",
       FunctionType::get(
@@ -277,12 +309,6 @@ void Codegen::addRuntime()
       "printd",
       FunctionType::get(
           Type::getInt32Ty(*TheContext),
-          {Type::getDoubleTy(*TheContext)},
-          false));
-  TheModule->getOrInsertFunction(
-      "sqrt",
-      FunctionType::get(
-          Type::getDoubleTy(*TheContext),
           {Type::getDoubleTy(*TheContext)},
           false));
   TheModule->getOrInsertFunction(
@@ -297,6 +323,27 @@ void Codegen::addRuntime()
       FunctionType::get(
         Type::getInt32Ty(*TheContext),
         {Type::getInt8Ty(*TheContext)->getPointerTo()},
+        true /* variadic func */
+      ));
+  TheModule->getOrInsertFunction(
+      "readi",
+      FunctionType::get(
+        Type::getInt32Ty(*TheContext),
+        {},
+        false /* variadic func */
+      ));
+  TheModule->getOrInsertFunction(
+      "readd",
+      FunctionType::get(
+        Type::getDoubleTy(*TheContext),
+        {},
+        false /* variadic func */
+      ));
+  TheModule->getOrInsertFunction(
+      "readline",
+      FunctionType::get(
+        PointerType::getUnqual(Type::getInt8Ty(*TheContext)),
+        {},
         true /* variadic func */
       ));
 }

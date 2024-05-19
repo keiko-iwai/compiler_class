@@ -1,10 +1,33 @@
 #include <cstdio>
 #include <cstdarg>
+#include <cstring>
 #include <cmath>
 /* Compile runtime.cpp separately when compiling to an object file */
 
 extern "C"
 {
+  int MAX_STRLEN = 1024;
+  char *inputbuf = 0;
+  void initialize() {
+    if (!inputbuf)
+      inputbuf = (char *)malloc(MAX_STRLEN * sizeof(char));
+    if (!inputbuf)
+    {
+      printf("Malloc failed!\n");
+      exit(1);
+    }
+  }
+
+  /* MATH */
+  double sqrt(double X);
+  double sin(double arg);
+  double cos(double arg);
+  double pow(double base, double exponent);
+  double pi()
+  {
+    return M_PI;
+  }
+  /* IO */
   int printi(int X)
   {
     return printf("%d\n", X);
@@ -33,5 +56,27 @@ extern "C"
     putchar('\n');
     return result;
   }
-  double sqrt(double X);
+  int readi() {
+    int x;
+    initialize();
+    fgets(inputbuf, MAX_STRLEN, stdin);
+    x = atoi(inputbuf);
+    return x;
+  }
+  double readd() {
+    double x;
+    initialize();
+    fgets(inputbuf, MAX_STRLEN, stdin);
+    x = atof(inputbuf);
+    return x;
+  }
+  char *readline() {
+    char *x;
+    initialize();
+    fgets(inputbuf, MAX_STRLEN, stdin);
+    int length = strlen(inputbuf);
+    x = (char *)malloc(strlen(inputbuf) * sizeof(char));
+    strncpy(x, inputbuf, length + 1);
+    return x;
+  }
 }
