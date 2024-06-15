@@ -145,7 +145,7 @@ void Codegen::initializeForJIT()
 
 void Codegen::runCode()
 {
-  std::cout << "Running code...\n";
+  std::cout << std::endl << "Executing...\n";
   auto RT = TheJIT->getMainJITDylib().createResourceTracker();
   auto TSM = ThreadSafeModule(std::move(TheModule), std::move(TheContext));
   ExitOnErr(TheJIT->addModule(std::move(TSM), RT));
@@ -156,7 +156,7 @@ void Codegen::runCode()
   int (*FP)() = ExprSymbol.getAddress().toPtr<int (*)()>();
   int result = FP();
 
-  std::cout << std::endl << "Main function evaluated successfully to " << result << std::endl;
+  std::cout << std::endl << "Exiting..." << std::endl;
   ExitOnErr(RT->remove());
   return;
 }
