@@ -47,9 +47,8 @@ Value *Codegen::createNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder,
   return value;
 }
 
-void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization)
+void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization, bool needPrintIR)
 {
-  std::cout << "Generating code..." << std::endl;;
   ConstObjCount = 0;
 
   // create main function
@@ -78,11 +77,9 @@ void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization)
   if (withOptimization) {
     TheFPM->run(*TheFunction, *TheFAM);
   }
-  TheFunction->print(errs());
-  if (withOptimization)
-    std::cout << "Optimized code is generated." << std::endl;
-  else
-    std::cout << "Code is generated." << std::endl;
+
+  if (needPrintIR)
+    TheFunction->print(errs());
 
   // cleanup; there may be multiple calls of generateCode
   popBlock();
@@ -194,7 +191,7 @@ void Codegen::writeObjFile(BlockExprAST &mainBlock)
   TheModule->setDataLayout(TheTargetMachine->createDataLayout());
   addRuntime();
   initializePassManagers();
-  generateCode(mainBlock, true);
+  generateCode(mainBlock, true, false);
 
   auto Filename = "output.o";
   std::error_code EC;

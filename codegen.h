@@ -99,7 +99,7 @@ public:
 
   void pp(BlockExprAST *block);
   bool typeCheck(BlockExprAST &block);
-  void generateCode(BlockExprAST &block, bool withOptimization);
+  void generateCode(BlockExprAST &block, bool withOptimization, bool needPrintIR);
   void runCode();
   void writeObjFile(BlockExprAST &block);
 
