@@ -15,13 +15,14 @@ extern int yyparse();
 int main(int argc, char *argv[])
 {
   // command line arguments
-  std::string inputFile = "", outputFile = "";
-  bool isEmitLLVM = false;
+  std::string optInputFile = "", optOutputFile = "";
+  bool isOptEmitLLVM = false, isOptInteractive = false;
 
   auto cli = (
-    value("input file", inputFile),
-    option("-emit-llvm").set(isEmitLLVM).doc("emit llvm code"),
-    option("-o") & value("output file", outputFile)
+    opt_value("input file", optInputFile),
+    option("-emit-llvm").set(isOptEmitLLVM).doc("emit llvm code"),
+    option("-i").set(isOptInteractive).doc("run interactive"),
+    option("-o") & value("output file", optOutputFile)
   );
 
   if (!parse(argc, argv, cli))
@@ -30,13 +31,13 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  if (inputFile.empty())
+  if (optInputFile.empty() && isOptInteractive)
   {
     yyin = stdin;
   }
-  else if (!(yyin = fopen(inputFile.c_str(), "rt")))
+  else if (!(yyin = fopen(optInputFile.c_str(), "rt")))
   {
-    std::cout << "Error: can not open file " << inputFile << std::endl;
+    std::cout << "Error: can not open file " << optInputFile << std::endl;
     return 1;
   }
 
@@ -62,11 +63,14 @@ int main(int argc, char *argv[])
     return 1;
   }
 
-  if (isEmitLLVM)
+  if (isOptEmitLLVM)
     return 0;
 
-  context.runCode();
-  context.writeObjFile(*programBlock);
+  if (isOptInteractive)
+    context.runCode();
+  else
+    context.writeObjFile(*programBlock);
+
   free(buffer);
   return 0;
 }
