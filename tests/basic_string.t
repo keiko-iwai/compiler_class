@@ -9,4 +9,10 @@ string f1() {
 }
 
 string y = f1();
-print(y);
+println(y);
+
+int x;
+for (x = 1; x > -10; x = x-1) {
+  print(" %d", x);
+}
+

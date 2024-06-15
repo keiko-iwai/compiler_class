@@ -6,7 +6,7 @@ echo "...................................."
 echo "...................................."
 echo Compile object file with runtime:
 echo "...................................."
-clang++ runtime.cpp output.o -o main
+clang++ runtime.cpp output.o -o string
 echo "...................................."
 echo Run program:
 echo "...................................."

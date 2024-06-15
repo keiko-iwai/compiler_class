@@ -150,9 +150,9 @@ int getNextLine(void) {
 
   /*================================================================*/
   /* read a line ---------------------------------------------------*/
-  p = fgets(buffer, lMaxBuffer, stdin);
+  p = fgets(buffer, lMaxBuffer, yyin);
   if (  p == NULL  ) {
-    if (  ferror(stdin)  )
+    if (  ferror(yyin)  )
       return -1;
     eof = true;
     return 1;

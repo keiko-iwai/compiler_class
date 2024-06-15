@@ -5,6 +5,6 @@ int factorial(int n) {
 
   return n * factorial(n-1);
 }
-
-int n = 5;
-println("factorial(%d) = %d", n, factorial(n));
+print("Factorial example. Input x: ");
+int x = readi();
+println("factorial(%d) = %d", x, factorial(x));

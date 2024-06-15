@@ -21,6 +21,7 @@ https://developer.ibm.com/tutorials/l-flexbison/
 extern int yylex(void);
 extern int yyparse(void);
 extern void yyerror(char*);
+extern FILE *yyin;
 
 
 /* external variables */
