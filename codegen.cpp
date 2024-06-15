@@ -161,9 +161,8 @@ void Codegen::runCode()
   return;
 }
 
-void Codegen::writeObjFile(BlockExprAST &mainBlock)
+void Codegen::writeObjFile(BlockExprAST &mainBlock, std::string optOutputFile)
 {
-  std::cout << "Writing object file...\n";
   TheModule = std::make_unique<Module>("_llvm_obj_module", *TheContext);
   InitializeAllTargetInfos();
   InitializeAllTargets();
@@ -193,7 +192,7 @@ void Codegen::writeObjFile(BlockExprAST &mainBlock)
   initializePassManagers();
   generateCode(mainBlock, true, false);
 
-  auto Filename = "output.o";
+  auto Filename = optOutputFile.empty() ? "output.o" : optOutputFile;
   std::error_code EC;
   raw_fd_ostream dest(Filename, EC, sys::fs::OF_None);
 

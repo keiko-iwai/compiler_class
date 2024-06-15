@@ -318,8 +318,6 @@ Value *FunctionDeclarationAST::createIR(Codegen &context)
     context.Builder->CreateRetVoid();
   verifyFunction(*TheFunction);
 
-  TheFunction->print(errs());
-
   context.popFunction();
   context.popBlock();
   context.NameTypesByBlock.pop_back();

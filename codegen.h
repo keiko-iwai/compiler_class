@@ -101,7 +101,7 @@ public:
   bool typeCheck(BlockExprAST &block);
   void generateCode(BlockExprAST &block, bool withOptimization, bool needPrintIR);
   void runCode();
-  void writeObjFile(BlockExprAST &block);
+  void writeObjFile(BlockExprAST &block, std::string optOutputFile);
 
   /* code generation functions */
   AllocaInst *createBlockAlloca(BasicBlock *BB, llvm::Type *type, const std::string &VarName);

@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
   if (isOptInteractive)
     context.runCode();
   else
-    context.writeObjFile(*programBlock);
+    context.writeObjFile(*programBlock, optOutputFile);
 
   free(buffer);
   return 0;
