@@ -334,7 +334,7 @@ Value *CallExprAST::createIR(Codegen &context)
     std::cerr << "[AST] Function " << Name.get() << " not found" << std::endl;
     return nullptr;
   }
-  FunctionDeclarationAST *fnDecl = (*context.DefinedFunctions)[Name.get()];
+  FunctionType *fnType = function->getFunctionType();
 
   std::vector<Value *> args;
   int idx = 0;
@@ -343,13 +343,15 @@ Value *CallExprAST::createIR(Codegen &context)
   {
     Value *val = (**it).createIR(context);
     llvm::Type *argType = (**it).typeOf(context);
-    if (fnDecl)
+    llvm::Type *expectedType = fnType->getParamType(idx);
+    if (argType != expectedType)
     {
-      llvm::Type *expectedType = fnDecl->getArgumentType(context, idx);
-      if (argType != expectedType && context.isTypeConversionPossible(argType, expectedType))
-      {
-        val = context.createTypeCast(context.Builder, val, expectedType);
+      if (!context.isTypeConversionPossible(argType, expectedType)) {
+        std::cout << "[AST] incompatible argument type " << idx << " for function" << Name.get() << std::endl;
+        return nullptr;
       }
+      else
+        val = context.createTypeCast(context.Builder, val, expectedType);
     }
     args.push_back(val);
   }
@@ -635,29 +637,32 @@ bool FunctionDeclarationAST::typeCheck(Codegen &context)
 
 bool CallExprAST::typeCheck(Codegen &context)
 {
-  FunctionDeclarationAST *function = (*context.DefinedFunctions)[Name.get()];
+  Function *function = context.TheModule->getFunction(Name.get().c_str());
   if (!function) // external function
   {
-    return true;
+    std::cerr << "[Typecheck on function call " << Name.get() << " failed: function not found" << std::endl;
+    return false;
+  }
+
+  FunctionType *fnType = function->getFunctionType();
+  if (Arguments.size() != fnType->getNumParams())
+  {
+    std::cerr << "Typecheck on function call " << Name.get() << " failed: number of arguments is wrong." << std::endl;
+    return false;
   }
 
   ExpressionList::const_iterator it;
   int idx = 0;
   for (it = Arguments.begin(); it != Arguments.end(); it++, idx++)
   {
-    if (!function->Arguments[idx])
-    {
-      std::cerr << "Typecheck on function call " << Name.get() << " failed: number of arguments is wrong." << std::endl;
-      return false;
-    }
     llvm::Type *valueType = (**it).typeOf(context);
     // the nametable of function arguments does not exist outside.
     // We obtain the text name of the type and convert to LLVM llvm::Type *
-    llvm::Type *argType = function->getArgumentType(context, idx);
+    llvm::Type *argType = fnType->getParamType(idx);
     if (valueType != argType && !context.isTypeConversionPossible(valueType, argType))
     {
       std::cerr << "Typecheck on function call " << Name.get() << " failed: argument type "
-        << function->Arguments[idx]->Name.get() << " is wrong " << std::endl;
+        << idx << " is wrong " << std::endl;
       return false;
     }
   }
