@@ -177,6 +177,10 @@ public:
 
 class CallExprAST : public ExprAST
 {
+private:
+  bool typeCheckExternalFn(Codegen &context, llvm::Function *function);
+  bool typeCheckUserFn(Codegen &context);
+
 public:
   const IdentifierExprAST &Name;
   ExpressionList Arguments;

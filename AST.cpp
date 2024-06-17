@@ -635,19 +635,13 @@ bool FunctionDeclarationAST::typeCheck(Codegen &context)
   return result;
 }
 
-bool CallExprAST::typeCheck(Codegen &context)
+bool CallExprAST::typeCheckExternalFn(Codegen &context, Function *function)
 {
-  Function *function = context.TheModule->getFunction(Name.get().c_str());
-  if (!function) // external function
-  {
-    std::cerr << "[Typecheck on function call " << Name.get() << " failed: function not found" << std::endl;
-    return false;
-  }
-
   FunctionType *fnType = function->getFunctionType();
   if (Arguments.size() != fnType->getNumParams())
   {
-    std::cerr << "Typecheck on function call " << Name.get() << " failed: number of arguments is wrong." << std::endl;
+    std::cerr << "Typecheck on function call " << Name.get()
+      << " failed: number of arguments is wrong." << std::endl;
     return false;
   }
 
@@ -661,12 +655,51 @@ bool CallExprAST::typeCheck(Codegen &context)
     llvm::Type *argType = fnType->getParamType(idx);
     if (valueType != argType && !context.isTypeConversionPossible(valueType, argType))
     {
+      std::cerr << "Typecheck on function call " << Name.get()
+        << " failed: argument type " << idx << " is wrong " << std::endl;
+      return false;
+    }
+  }
+  return true;
+}
+
+bool CallExprAST::typeCheckUserFn(Codegen &context)
+{
+  FunctionDeclarationAST *fnDecl = (*context.DefinedFunctions)[Name.get()];
+  if (!fnDecl) {
+    std::cerr << "[Typecheck on function call " << Name.get()
+      << " failed: function not found" << std::endl;
+    return false;
+  }
+  if (fnDecl->Arguments.size() != Arguments.size())
+  {
+    std::cerr << "Typecheck on function call " << Name.get()
+      << " failed: number of arguments is wrong." << std::endl;
+    return false;
+  }
+
+  ExpressionList::const_iterator it;
+  int idx = 0;
+  for (it = Arguments.begin(); it != Arguments.end(); it++, idx++)
+  {
+    llvm::Type *valueType = (**it).typeOf(context);
+    llvm::Type *argType = fnDecl->getArgumentType(context, idx);
+    if (valueType != argType && !context.isTypeConversionPossible(valueType, argType))
+    {
       std::cerr << "Typecheck on function call " << Name.get() << " failed: argument type "
         << idx << " is wrong " << std::endl;
       return false;
     }
   }
-
-  logTypecheck("function call " + Name.get(), true);
   return true;
+}
+
+bool CallExprAST::typeCheck(Codegen &context)
+{
+  Function *function = context.TheModule->getFunction(Name.get().c_str());
+  bool result = !function ? typeCheckUserFn(context)
+    : typeCheckExternalFn(context, function);
+
+  logTypecheck("function call " + Name.get(), result);
+  return result;
 }
