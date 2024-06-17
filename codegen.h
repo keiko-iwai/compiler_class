@@ -80,6 +80,7 @@ public:
   std::unique_ptr<LLVMContext> TheContext;
   std::unique_ptr<Module> TheModule;
   std::unique_ptr<IRBuilder<>> Builder;
+  llvm::raw_ostream *out; // redirected output fd
 
   /* symbol tables */
   std::map<std::string, AllocaInst *> NamedValues;

@@ -23,29 +23,29 @@ static void logCodegen(const std::string &str) {
 }
 
 /* codegen methods */
-Value *BlockExprAST::createIR(Codegen &context)
+Value *BlockExprAST::createIR(Codegen &context, bool needPrintIR)
 {
   StatementList::const_iterator it;
   Value *last = nullptr;
   for (it = Statements.begin(); it != Statements.end(); it++)
   {
-    last = (**it).createIR(context);
+    last = (**it).createIR(context, needPrintIR);
   }
   logCodegen("block");
   return last;
 }
 
-Value *IntExprAST::createIR(Codegen &context)
+Value *IntExprAST::createIR(Codegen &context, bool _needPrintIR)
 {
   return ConstantInt::get(Type::getInt32Ty(*context.TheContext), Val, true /*signed*/);
 }
 
-Value *DoubleExprAST::createIR(Codegen &context)
+Value *DoubleExprAST::createIR(Codegen &context, bool _needPrintIR)
 {
   return ConstantFP::get(Type::getDoubleTy(*context.TheContext), Val);
 }
 
-Value *StringExprAST::createIR(Codegen &context)
+Value *StringExprAST::createIR(Codegen &context, bool _needPrintIR)
 {
   // create a string global variable; return a link to it
   auto charType = Type::getInt8Ty(*context.TheContext);
@@ -68,7 +68,7 @@ Value *StringExprAST::createIR(Codegen &context)
   return llvm::ConstantExpr::getBitCast(globalDeclaration, charType->getPointerTo());
 }
 
-Value *IdentifierExprAST::createIR(Codegen &context)
+Value *IdentifierExprAST::createIR(Codegen &context, bool _needPrintIR)
 {
   logCodegen("identifier reference " + Name);
   CodegenBlock *TheBlock = context.GeneratingBlocks.top();
@@ -87,12 +87,12 @@ Value *IdentifierExprAST::createIR(Codegen &context)
   return context.Builder->CreateLoad(Alloca->getAllocatedType(), Alloca, Name.c_str());
 }
 
-Value *ExpressionStatementAST::createIR(Codegen &context)
+Value *ExpressionStatementAST::createIR(Codegen &context, bool needPrintIR)
 {
-  return Statement.createIR(context);
+  return Statement.createIR(context, needPrintIR);
 }
 
-Value *VarDeclExprAST::createIR(Codegen &context)
+Value *VarDeclExprAST::createIR(Codegen &context, bool needPrintIR)
 {
   logCodegen("variable declaration " + Name.get());
   CodegenBlock *TheBlock = context.GeneratingBlocks.top();
@@ -103,12 +103,12 @@ Value *VarDeclExprAST::createIR(Codegen &context)
   if (AssignmentExpr)
   {
     AssignmentAST assignment(Name, *AssignmentExpr);
-    assignment.createIR(context);
+    assignment.createIR(context, needPrintIR);
   }
   return Alloca;
 }
 
-Value *AssignmentAST::createIR(Codegen &context)
+Value *AssignmentAST::createIR(Codegen &context, bool needPrintIR)
 {
   logCodegen("assignment for " + LHS.Name);
   CodegenBlock *TheBlock = context.GeneratingBlocks.top();
@@ -120,7 +120,7 @@ Value *AssignmentAST::createIR(Codegen &context)
     return nullptr;
   }
 
-  Value *value = RHS.createIR(context);
+  Value *value = RHS.createIR(context, needPrintIR);
   llvm::Type *resultType = Alloca->getAllocatedType();
   if (RHS.typeOf(context) != resultType)
   {
@@ -135,12 +135,12 @@ Value *AssignmentAST::createIR(Codegen &context)
   return context.Builder->CreateStore(value, Alloca);
 }
 
-Value *BinaryExprAST::createIR(Codegen &context)
+Value *BinaryExprAST::createIR(Codegen &context, bool needPrintIR)
 {
   /* integers are i32 and signed */
   logCodegen("expression " + Op + ":");
-  Value *L = LHS->createIR(context);
-  Value *R = RHS->createIR(context);
+  Value *L = LHS->createIR(context, needPrintIR);
+  Value *R = RHS->createIR(context, needPrintIR);
   if (!L || !R)
   {
     std::cerr << "[AST] Empty codegen for L=" << L << " and R=" << R << std::endl;
@@ -237,10 +237,10 @@ Value *BinaryExprAST::createIR(Codegen &context)
 }
 
 
-Value *UnaryExprAST::createIR(Codegen &context)
+Value *UnaryExprAST::createIR(Codegen &context, bool needPrintIR)
 {
   logCodegen("expression " + Op + ":");
-  Value *Val = Expr->createIR(context);
+  Value *Val = Expr->createIR(context, needPrintIR);
   if (!Val)
   {
     std::cerr << "[AST] Empty codegen for Val=" << Expr << std::endl;
@@ -264,7 +264,7 @@ llvm::Type *FunctionDeclarationAST::getArgumentType(Codegen &context, int idx)
   return context.stringTypeToLLVM(Arguments[idx]->TypeName.get());
 }
 
-Value *FunctionDeclarationAST::createIR(Codegen &context)
+Value *FunctionDeclarationAST::createIR(Codegen &context, bool needPrintIR)
 {
   logCodegen("function " + Name.get());
   // the type casts refer to the name table
@@ -305,7 +305,7 @@ Value *FunctionDeclarationAST::createIR(Codegen &context)
     idx++;
   }
 
-  Value *RetVal = Block.createIR(context);
+  Value *RetVal = Block.createIR(context, needPrintIR);
   llvm::Type *returnType = context.stringTypeToLLVM(TypeName);
   llvm::Type *blockType = Block.typeOf(context);
   if (blockType != returnType && context.isTypeConversionPossible(blockType, returnType)) {
@@ -318,6 +318,9 @@ Value *FunctionDeclarationAST::createIR(Codegen &context)
     context.Builder->CreateRetVoid();
   verifyFunction(*TheFunction);
 
+  if (needPrintIR)
+    TheFunction->print(*context.out);
+
   context.popFunction();
   context.popBlock();
   context.NameTypesByBlock.pop_back();
@@ -325,7 +328,7 @@ Value *FunctionDeclarationAST::createIR(Codegen &context)
   return TheFunction;
 }
 
-Value *CallExprAST::createIR(Codegen &context)
+Value *CallExprAST::createIR(Codegen &context, bool needPrintIR)
 {
   logCodegen("function call " + Name.get());
   Function *function = context.TheModule->getFunction(Name.get().c_str());
@@ -339,9 +342,16 @@ Value *CallExprAST::createIR(Codegen &context)
   std::vector<Value *> args;
   int idx = 0;
   ExpressionList::const_iterator it;
+  bool isVariadic = fnType->isVarArg();
+  int numParams = fnType->getNumParams();
   for (it = Arguments.begin(); it != Arguments.end(); it++, idx++)
   {
-    Value *val = (**it).createIR(context);
+    Value *val = (**it).createIR(context, needPrintIR);
+    if (isVariadic && idx >= numParams)
+    {
+      args.push_back(val); // no conversion
+      continue;
+    }
     llvm::Type *argType = (**it).typeOf(context);
     llvm::Type *expectedType = fnType->getParamType(idx);
     if (argType != expectedType)
@@ -359,7 +369,7 @@ Value *CallExprAST::createIR(Codegen &context)
   return call;
 }
 
-Value *ReturnStatementAST::createIR(Codegen &context)
+Value *ReturnStatementAST::createIR(Codegen &context, bool needPrintIR)
 {
   logCodegen("return");
   if (!Expr)
@@ -368,7 +378,7 @@ Value *ReturnStatementAST::createIR(Codegen &context)
     return nullptr;
   }
 
-  Value *RetVal = Expr->createIR(context);
+  Value *RetVal = Expr->createIR(context, needPrintIR);
   if (RetVal)
   {
     context.Builder->CreateRet(RetVal);
@@ -378,10 +388,10 @@ Value *ReturnStatementAST::createIR(Codegen &context)
   return nullptr;
 }
 
-Value *IfStatementAST::createIR(Codegen &context)
+Value *IfStatementAST::createIR(Codegen &context, bool needPrintIR)
 {
   logCodegen("if");
-  Value *condVal = Expr->createIR(context);
+  Value *condVal = Expr->createIR(context, needPrintIR);
   // create true/false comparison
   condVal = context.createNonZeroCmp(context.Builder, condVal);
 
@@ -395,7 +405,7 @@ Value *IfStatementAST::createIR(Codegen &context)
   // then-block
   context.Builder->SetInsertPoint(ThenBB);
   if (ThenBlock)
-    ThenBlock->createIR(context);
+    ThenBlock->createIR(context, needPrintIR);
   // finish then-block
   context.Builder->CreateBr(MergeBB);
 
@@ -403,7 +413,7 @@ Value *IfStatementAST::createIR(Codegen &context)
   TheFunction->insert(TheFunction->end(), ElseBB);
   context.Builder->SetInsertPoint(ElseBB);
   if (ElseBlock)
-    ElseBlock->createIR(context);
+    ElseBlock->createIR(context, needPrintIR);
   // finish else-block
   context.Builder->CreateBr(MergeBB);
 
@@ -413,13 +423,13 @@ Value *IfStatementAST::createIR(Codegen &context)
   return condVal;
 }
 
-Value *ForStatementAST::createIR(Codegen &context)
+Value *ForStatementAST::createIR(Codegen &context, bool needPrintIR)
 {
   logCodegen("for");
   ExpressionList::const_iterator it;
   for (it = Before.begin(); it != Before.end(); it++)
   {
-    (**it).createIR(context);
+    (**it).createIR(context, needPrintIR);
   }
   Function *TheFunction = context.currentFunction();
   /* before: x = 1;
@@ -435,18 +445,18 @@ Value *ForStatementAST::createIR(Codegen &context)
   context.Builder->SetInsertPoint(LoopBB);
 
   // FIXME: support an empty condition and generate the true value
-  Value *condVal = Expr->createIR(context);
+  Value *condVal = Expr->createIR(context, needPrintIR);
   condVal = context.createNonZeroCmp(context.Builder, condVal);
   context.Builder->CreateCondBr(condVal, BodyBB, ExitBB);
 
   TheFunction->insert(TheFunction->end(), BodyBB);
   context.Builder->SetInsertPoint(BodyBB);
   if (Block)
-    Block->createIR(context);
+    Block->createIR(context, needPrintIR);
 
   for (it = After.begin(); it != After.end(); it++)
   {
-    (**it).createIR(context);
+    (**it).createIR(context, needPrintIR);
   }
   context.Builder->CreateBr(LoopBB);
 
@@ -638,7 +648,10 @@ bool FunctionDeclarationAST::typeCheck(Codegen &context)
 bool CallExprAST::typeCheckExternalFn(Codegen &context, Function *function)
 {
   FunctionType *fnType = function->getFunctionType();
-  if (Arguments.size() != fnType->getNumParams())
+  int numParams = fnType->getNumParams();
+  bool isVariadic = fnType->isVarArg();
+
+  if (Arguments.size() > numParams && !isVariadic)
   {
     std::cerr << "Typecheck on function call " << Name.get()
       << " failed: number of arguments is wrong." << std::endl;
@@ -649,6 +662,9 @@ bool CallExprAST::typeCheckExternalFn(Codegen &context, Function *function)
   int idx = 0;
   for (it = Arguments.begin(); it != Arguments.end(); it++, idx++)
   {
+    if (isVariadic && idx >= numParams)
+      break; // no typecheck
+
     llvm::Type *valueType = (**it).typeOf(context);
     // the nametable of function arguments does not exist outside.
     // We obtain the text name of the type and convert to LLVM llvm::Type *

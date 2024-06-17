@@ -17,7 +17,7 @@ public:
   {
     std::cout << "Default print: " << this << "\n";
   }
-  virtual llvm::Value *createIR(Codegen &context)
+  virtual llvm::Value *createIR(Codegen &context, bool needPrintIR = false)
   {
     std::cout << "Default codegen: " << this << "\n";
     return nullptr;
@@ -52,7 +52,7 @@ class BlockExprAST : public ExprAST
 {
 public:
   StatementList Statements;
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   llvm::Type *typeOf(Codegen &context) override;
 
   void pp() override
@@ -73,7 +73,7 @@ class IntExprAST : public ExprAST
 
 public:
   IntExprAST(int Val) : Val(Val) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
 
   void pp() override
   {
@@ -88,7 +88,7 @@ class DoubleExprAST : public ExprAST
 
 public:
   DoubleExprAST(double Val) : Val(Val) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
 
   void pp() override
   {
@@ -103,7 +103,7 @@ class StringExprAST : public ExprAST
 
 public:
   StringExprAST(const std::string &Val) : Val(Val) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   llvm::Type *typeOf(Codegen &context) override;
 
   void pp() override
@@ -117,7 +117,7 @@ class IdentifierExprAST : public ExprAST
 public:
   std::string Name;
   IdentifierExprAST(const std::string &Name) : Name(Name) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
 
   void pp() override
   {
@@ -135,7 +135,7 @@ class BinaryExprAST : public ExprAST
 public:
   BinaryExprAST(std::string Op, ExprAST *LHS, ExprAST *RHS)
       : Op(Op), LHS(LHS), RHS(RHS) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   bool typeCheck(Codegen &context) override;
 
   void pp() override
@@ -154,7 +154,7 @@ class UnaryExprAST : public ExprAST
   ExprAST *Expr;
 public:
   UnaryExprAST(std::string Op, ExprAST *Expr) : Op(Op), Expr(Expr) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   bool typeCheck(Codegen &context) override;
   llvm::Type *typeOf(Codegen &context) override;
 };
@@ -165,7 +165,7 @@ public:
   IdentifierExprAST &LHS;
   ExprAST &RHS;
   AssignmentAST(IdentifierExprAST &LHS, ExprAST &RHS) : LHS(LHS), RHS(RHS) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   bool typeCheck(Codegen &context) override;
 
   void pp() override
@@ -186,7 +186,7 @@ public:
   ExpressionList Arguments;
   CallExprAST(const IdentifierExprAST &Name, ExpressionList &Arguments) : Name(Name), Arguments(Arguments) {}
   CallExprAST(const IdentifierExprAST &Name) : Name(Name) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   bool typeCheck(Codegen &context) override;
 
   void pp() override
@@ -206,7 +206,7 @@ class ExpressionStatementAST : public StatementAST
 public:
   ExprAST &Statement;
   ExpressionStatementAST(ExprAST &Statement) : Statement(Statement) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   llvm::Type *typeOf(Codegen &context) override;
 
   void pp() override
@@ -225,7 +225,7 @@ public:
     TypeName(TypeName), Name(Name), AssignmentExpr(nullptr) {}
   VarDeclExprAST(const IdentifierExprAST &TypeName, IdentifierExprAST &Name, ExprAST *AssignmentExpr):
     TypeName(TypeName), Name(Name), AssignmentExpr(AssignmentExpr) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   bool typeCheck(Codegen &context) override;
 
   void pp() override
@@ -254,7 +254,7 @@ public:
                          const IdentifierExprAST &Name,
                          const VariableList &Arguments,
                          BlockExprAST &Block) : TypeName(TypeName), Name(Name), Arguments(Arguments), Block(Block) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   bool typeCheck(Codegen &context) override;
   llvm::Type *getArgumentType(Codegen &context, int idx);
 
@@ -289,7 +289,7 @@ class ReturnStatementAST : public StatementAST
 public:
   ReturnStatementAST() : Expr(nullptr) {}
   ReturnStatementAST(ExprAST *Expr) : Expr(Expr) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   llvm::Type *typeOf(Codegen &context) override;
 
   void pp() override
@@ -323,7 +323,7 @@ public:
       ElseBlock = new BlockExprAST();
       ElseBlock->Statements.push_back(Elif);
     }
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   // no return type
 
   void pp() override
@@ -349,7 +349,7 @@ class ForStatementAST : public StatementAST
 
   ForStatementAST(ExpressionList &Before, ExprAST *Expr, ExpressionList &After, BlockExprAST *Block)
     : Before(Before), Expr(Expr), After(After), Block(Block) {}
-  llvm::Value *createIR(Codegen &context) override;
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   // no return type
 
   void pp() override

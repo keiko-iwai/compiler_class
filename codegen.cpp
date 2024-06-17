@@ -53,7 +53,6 @@ void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization = true
   ConstObjCount = 0;
 
   //redirect output
-  llvm::raw_ostream *out;
   if (!outputFile.empty()) {
     std::error_code EC;
     out = new raw_fd_ostream(outputFile, EC, sys::fs::OF_None);
@@ -78,7 +77,7 @@ void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization = true
   // Push a new variable/block context
   pushBlock(bblock);
 
-  mainBlock.createIR(*this);
+  mainBlock.createIR(*this, needPrintIR);
   Value *RetVal = ConstantInt::get(Type::getInt32Ty(*TheContext), 0, true);
   Builder->CreateRet(RetVal);
   verifyFunction(*TheFunction);
