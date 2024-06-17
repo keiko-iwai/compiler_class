@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
     return 0;
   }
 
-  if (optInputFile.empty() || isOptInteractive)
+  if (optInputFile.empty())
     yyin = stdin;
   else if (!(yyin = fopen(optInputFile.c_str(), "rt")))
   {
