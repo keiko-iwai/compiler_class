@@ -47,9 +47,19 @@ Value *Codegen::createNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder,
   return value;
 }
 
-void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization, bool needPrintIR)
+void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization = true,
+  bool needPrintIR = false, std::string outputFile = "")
 {
   ConstObjCount = 0;
+
+  //redirect output
+  llvm::raw_ostream *out;
+  if (!outputFile.empty()) {
+    std::error_code EC;
+    out = new raw_fd_ostream(outputFile, EC, sys::fs::OF_None);
+  } else {
+    out = &outs();
+  }
 
   // create main function
   IdentifierExprAST type = IdentifierExprAST("int");
@@ -79,7 +89,7 @@ void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization, bool 
   }
 
   if (needPrintIR)
-    TheFunction->print(errs());
+    TheFunction->print(*out);
 
   // cleanup; there may be multiple calls of generateCode
   popBlock();
@@ -176,7 +186,7 @@ void Codegen::writeObjFile(BlockExprAST &mainBlock, std::string optOutputFile)
   std::string Error;
   auto Target = TargetRegistry::lookupTarget(TargetTriple, Error);
   if (!Target) {
-    errs() << Error;
+    errs() << "Target lookup failed: " << Error;
     return;
   }
 
@@ -190,7 +200,7 @@ void Codegen::writeObjFile(BlockExprAST &mainBlock, std::string optOutputFile)
   TheModule->setDataLayout(TheTargetMachine->createDataLayout());
   addRuntime();
   initializePassManagers();
-  generateCode(mainBlock, true, false);
+  generateCode(mainBlock);
 
   auto Filename = optOutputFile.empty() ? "output.o" : optOutputFile;
   std::error_code EC;
