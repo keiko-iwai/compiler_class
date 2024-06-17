@@ -5,3 +5,4 @@ tokens.cpp
 main
 compiler
 *.o
+*.ll
