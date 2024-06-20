@@ -378,14 +378,30 @@ Value *ReturnStatementAST::createIR(Codegen &context, bool needPrintIR)
     return nullptr;
   }
 
+  Function *function = context.currentFunction(); // current function
+  FunctionType *fnType = function->getFunctionType();
+  llvm::Type *expectedType = fnType->getReturnType();
+
   Value *RetVal = Expr->createIR(context, needPrintIR);
-  if (RetVal)
+  if (!RetVal)
   {
-    context.Builder->CreateRet(RetVal);
-    return RetVal;
+    std::cerr << "[AST] Failed to generate return result " << std::endl;
+    return nullptr;
   }
-  std::cerr << "[AST] Failed to generate return result " << std::endl;
-  return nullptr;
+
+  llvm::Type *valueType = RetVal->getType();
+  if (valueType != expectedType) {
+    if (!context.isTypeConversionPossible(valueType, expectedType))
+    {
+      std::cout << "[AST] return value type " << context.print(valueType)
+        << " can not convert to expected type" << context.print(expectedType) << std::endl;
+      Expr->pp();
+      return nullptr;
+    }
+    RetVal = context.createTypeCast(context.Builder, RetVal, expectedType);
+  }
+  context.Builder->CreateRet(RetVal);
+  return RetVal;
 }
 
 Value *IfStatementAST::createIR(Codegen &context, bool needPrintIR)
