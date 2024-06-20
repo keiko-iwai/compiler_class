@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cstdlib>
+#include <locale>
 #include "AST.h"
 #include "codegen.h"
 #include "error.h"
@@ -20,6 +21,7 @@ extern int yyparse();
 
 int main(int argc, char *argv[])
 {
+  std::locale::global(std::locale("en_US.UTF-8"));
   // command line arguments
   std::string optInputFile = "", optOutputFile = "";
   bool isOptEmitLLVM = false, isOptInteractive = false;

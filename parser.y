@@ -95,7 +95,7 @@ string_val : STRINGVAL
           };
 
 numeric : INTEGER { $$ = new IntExprAST(atoi($1->c_str())); delete $1; }
-        | DOUBLE  { $$ = new DoubleExprAST(atol($1->c_str())); delete $1;  }
+        | DOUBLE  { $$ = new DoubleExprAST(std::stod($1->c_str())); delete $1;  }
         ;
 
 if_stmt : IF LPAREN expr RPAREN block { $$ = new IfStatementAST($3, $5); }
