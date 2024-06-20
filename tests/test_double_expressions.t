@@ -1,0 +1,16 @@
+double x = 6.0;
+double y = 1.5;
+println("Double precision addition/subtraction:");
+println("x = %.2f, y = %.2f.  x +  y => %.2f",  x, y, (x + y));
+println("x = %.2f, y = %.2f.  x -  y => %.2f",  x, y, (x - y));
+println("x = %.2f, y = %.2f. -x + -y => %.2f", x, y, (-x + -y));
+println("Double precision multiplication/division:");
+println("x = %.2f, y = %.2f. x * y => %.2f",  x, y, (x * y));
+println("x = %.2f, y = %.2f. x / y => %.2f",  x, y, (x / y));
+println("Double precision comparison:");
+println("x = %.2f, y = %.2f. x == y => %.2f", x, y, (x == y));
+println("x = %.2f, y = %.2f. x != y => %.2f", x, y, (x != y));
+println("x = %.2f, y = %.2f. x >  y => %.2f",  x, y, (x > y));
+println("x = %.2f, y = %.2f. x >= y => %.2f", x, y, (x >= y));
+println("x = %.2f, y = %.2f. x <  y => %.2f",  x, y, (x < y));
+println("x = %.2f, y = %.2f. x <= y => %.2f", x, y, (x <= y));
