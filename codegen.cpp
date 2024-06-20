@@ -152,9 +152,9 @@ void Codegen::initializeForJIT()
   initializePassManagers();
 }
 
-void Codegen::runCode()
+void Codegen::runCode(std::string inputFileName)
 {
-  std::cout << std::endl << "Executing...\n";
+  std::cout << "Executing " << (inputFileName.empty() ? "from stdin" : inputFileName) << "\n";
   auto RT = TheJIT->getMainJITDylib().createResourceTracker();
   auto TSM = ThreadSafeModule(std::move(TheModule), std::move(TheContext));
   ExitOnErr(TheJIT->addModule(std::move(TSM), RT));

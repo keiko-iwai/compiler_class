@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     return 0;
 
   if (isOptInteractive)
-    context.runCode();
+    context.runCode(optInputFile);
   else
     context.writeObjFile(*programBlock, objectFile);
 

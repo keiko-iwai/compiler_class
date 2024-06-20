@@ -101,7 +101,7 @@ public:
   void pp(BlockExprAST *block);
   bool typeCheck(BlockExprAST &block);
   void generateCode(BlockExprAST &block, bool withOptimization, bool needPrintIR, std::string outputFile);
-  void runCode();
+  void runCode(std::string inputFileName);
   void writeObjFile(BlockExprAST &block, std::string optOutputFile);
 
   /* code generation functions */
