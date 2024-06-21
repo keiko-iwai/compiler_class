@@ -19,6 +19,7 @@ extern "C"
   }
 
   /* MATH */
+  double fabs(double X);
   double sqrt(double X);
   double sin(double arg);
   double cos(double arg);

@@ -251,6 +251,12 @@ void Codegen::addRuntime()
 {
   /* MATH */
   TheModule->getOrInsertFunction(
+      "fabs",
+      FunctionType::get(
+          Type::getDoubleTy(*TheContext),
+          {Type::getDoubleTy(*TheContext)},
+          false));
+  TheModule->getOrInsertFunction(
       "pow",
       FunctionType::get(
           Type::getDoubleTy(*TheContext),
