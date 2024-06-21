@@ -47,7 +47,7 @@ Value *Codegen::createNonZeroCmp(std::unique_ptr<IRBuilder<>> const &Builder,
   return value;
 }
 
-void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization = true,
+void Codegen::generateCode(BlockExprAST &parsedBlock, bool withOptimization = true,
   bool needPrintIR = false, std::string outputFile = "")
 {
   ConstObjCount = 0;
@@ -62,37 +62,14 @@ void Codegen::generateCode(BlockExprAST &mainBlock, bool withOptimization = true
 
   // create main function
   IdentifierExprAST type = IdentifierExprAST("int");
-  IdentifierExprAST name = IdentifierExprAST("main");
+  IdentifierExprAST name = IdentifierExprAST(MainFunctionName);
   VariableList args;
+  ExprAST *returnValue = new IntExprAST(0);
+  ReturnStatementAST *returnStmt = new ReturnStatementAST(returnValue);
+  FunctionBlockAST mainBlock = FunctionBlockAST(&parsedBlock, *returnStmt);
   FunctionDeclarationAST *main = new FunctionDeclarationAST(type, name, args, mainBlock);
 
-  std::vector<llvm::Type *> Args;
-  FunctionType *FT = FunctionType::get(Type::getInt32Ty(*TheContext), Args, false);
-  Function *TheFunction = Function::Create(
-      FT, Function::ExternalLinkage, MainFunctionName, TheModule.get());
-  pushFunction(TheFunction);
-
-  BasicBlock *bblock = BasicBlock::Create(*TheContext, "entry", TheFunction);
-  Builder->SetInsertPoint(bblock);
-  // Push a new variable/block context
-  pushBlock(bblock);
-
-  mainBlock.createIR(*this, needPrintIR);
-  Value *RetVal = ConstantInt::get(Type::getInt32Ty(*TheContext), 0, true);
-  Builder->CreateRet(RetVal);
-  verifyFunction(*TheFunction);
-
-  // Run the optimizer on the function.
-  if (withOptimization) {
-    TheFPM->run(*TheFunction, *TheFAM);
-  }
-
-  if (needPrintIR)
-    TheFunction->print(*out);
-
-  // cleanup; there may be multiple calls of generateCode
-  popBlock();
-  popFunction();
+  main->createIR(*this, needPrintIR);
 }
 
 void Codegen::pp(BlockExprAST *block)

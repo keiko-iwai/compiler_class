@@ -11,7 +11,6 @@
   FunctionMap *definedFunctions = new FunctionMap();
 
   extern void yyerror(const char *str) {
-    //printf("[Bison] Line %d, column %d: %s\n", yylineno, column, str);
     PrintError(str);
   }
 
@@ -20,13 +19,15 @@
 %locations
 
 %union {
+    IdentifierExprAST *ident;
     ExprAST *expr;
     BlockExprAST *block;
-    StatementAST *stmt;
-    IdentifierExprAST *ident;
-    VarDeclExprAST *var_decl;
+    FunctionBlockAST *fnBlock;
     VariableList *func_args;
     ExpressionList *expr_list;
+    StatementAST *stmt;
+    ReturnStatementAST *return_stmt;
+    VarDeclExprAST *var_decl;
     std::string *string;
     int token;
 }
@@ -36,7 +37,7 @@
    they represent.
  */
 %token <string> IDENTIFIER INTEGER DOUBLE STRINGVAL
-%token <token> LPAREN RPAREN LBRACE TRBRACE COMMA DOT SEMICOLON
+%token <token> LPAREN RPAREN LBRACE TBRACE COMMA DOT SEMICOLON
 %token <string> EQ NE LT LE GT GE EQUAL
 %token <string> PLUS MINUS MUL DIV
 %token <string> RETURN IF ELSE FOR
@@ -48,10 +49,10 @@
  */
 %type <ident> ident
 %type <expr> numeric expr add_expr mul_expr comparison_expr factor call_expr string_val
-%type <block> program stmts block
+%type <block> program stmts block function_block
 %type <func_args> func_decl_args
 %type <expr_list> expr_list
-%type <stmt> stmt var_decl func_decl return_stmt if_stmt loop_stmt for_stmt
+%type <stmt> stmt var_decl func_decl if_stmt loop_stmt for_stmt return_stmt
 %type <string> comparison_op add_op mul_op
 
 /* Operator precedence for mathematical operators */
@@ -71,13 +72,13 @@ stmts : stmt { $$ = new BlockExprAST(); $$->Statements.push_back($<stmt>1); }
       | stmts stmt { $1->Statements.push_back($<stmt>2); }
       ;
 
-stmt : return_stmt SEMICOLON | func_decl | if_stmt | loop_stmt
+stmt : func_decl | if_stmt | loop_stmt
      | expr SEMICOLON { $$ = new ExpressionStatementAST(*$1); }
      | var_decl SEMICOLON
      ;
 
-return_stmt : RETURN expr { $$ = new ReturnStatementAST($2); }
-     | RETURN { $$ = new ReturnStatementAST(); }
+return_stmt : RETURN expr SEMICOLON { $$ = new ReturnStatementAST($2); }
+     | RETURN SEMICOLON { $$ = new ReturnStatementAST(); }
      ;
 
 var_decl : ident ident { $$ = new VarDeclExprAST(*$1, *$2); }
@@ -144,17 +145,22 @@ mul_op : MUL | DIV ;
 
 /* function grammar rules */
 
-func_decl : ident ident LPAREN func_decl_args RPAREN block
+func_decl : ident ident LPAREN func_decl_args RPAREN function_block
           {
-              FunctionDeclarationAST *fn = new FunctionDeclarationAST(*$1, *$2, *$4, *$6);
+              FunctionDeclarationAST *fn = new FunctionDeclarationAST(*$1, *$2, *$4, *($<fnBlock>6));
               $$ = fn;
               (*definedFunctions)[$2->Name] = fn;
               delete $4;
           }
           ;
 
-block : LBRACE stmts TRBRACE { $$ = $2; }
-      | LBRACE TRBRACE { $$ = new BlockExprAST(); }
+function_block : LBRACE stmts return_stmt TBRACE { $<fnBlock>$ = new FunctionBlockAST($2, *$<return_stmt>3); }
+               | LBRACE return_stmt TBRACE { $<fnBlock>$ = new FunctionBlockAST(*$<return_stmt>2); }
+               ;
+
+block : LBRACE stmts TBRACE { $$ = $2; }
+      | LBRACE TBRACE { $$ = new BlockExprAST(); }
+      | function_block { $$ = $1; }
       ;
 
 expr_list : /* empty */  { $$ = new ExpressionList(); }

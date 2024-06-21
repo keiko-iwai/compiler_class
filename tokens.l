@@ -37,7 +37,7 @@
 "("                     BEGIN_TOKEN; return TOKEN(LPAREN);
 ")"                     BEGIN_TOKEN; return TOKEN(RPAREN);
 "{"                     BEGIN_TOKEN; return TOKEN(LBRACE);
-"}"                     BEGIN_TOKEN; return TOKEN(TRBRACE);
+"}"                     BEGIN_TOKEN; return TOKEN(TBRACE);
 "."                     BEGIN_TOKEN; return TOKEN(DOT);
 ","                     BEGIN_TOKEN; return TOKEN(COMMA);
 "=="                    BEGIN_TOKEN; SAVE_TOKEN; return EQ;

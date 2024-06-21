@@ -35,6 +35,16 @@ Value *BlockExprAST::createIR(Codegen &context, bool needPrintIR)
   return last;
 }
 
+Value *FunctionBlockAST::createIR(Codegen &context, bool needPrintIR)
+{
+  if (Block)
+    Block->createIR(context, needPrintIR);
+
+  Value *last = ReturnStmt.createIR(context, needPrintIR);
+  logCodegen("function block");
+  return last;
+}
+
 Value *IntExprAST::createIR(Codegen &context, bool _needPrintIR)
 {
   return ConstantInt::get(Type::getInt32Ty(*context.TheContext), Val, true /*signed*/);
@@ -316,10 +326,6 @@ Value *FunctionDeclarationAST::createIR(Codegen &context, bool needPrintIR)
     RetVal = context.createTypeCast(context.Builder, RetVal, returnType);
   }
 
-  if (RetVal)
-    context.Builder->CreateRet(RetVal);
-  else
-    context.Builder->CreateRetVoid();
   verifyFunction(*TheFunction);
 
   if (needPrintIR)
@@ -328,7 +334,8 @@ Value *FunctionDeclarationAST::createIR(Codegen &context, bool needPrintIR)
   context.popFunction();
   context.popBlock();
   context.NameTypesByBlock.pop_back();
-  context.Builder->SetInsertPoint(context.currentBlock());
+  if (!context.GeneratingBlocks.empty()) // stack is empty when we exit the main function
+    context.Builder->SetInsertPoint(context.currentBlock());
   return TheFunction;
 }
 
@@ -385,11 +392,12 @@ Value *ReturnStatementAST::createIR(Codegen &context, bool needPrintIR)
   Function *function = context.currentFunction(); // current function
   FunctionType *fnType = function->getFunctionType();
   llvm::Type *expectedType = fnType->getReturnType();
+  std::string fnName = std::string(function->getName());
 
   Value *RetVal = Expr->createIR(context, needPrintIR);
   if (!RetVal)
   {
-    std::cerr << "[AST] Failed to generate return result " << std::endl;
+    std::cerr << "[AST] Failed to generate return result " << fnName << std::endl;
     return nullptr;
   }
 
@@ -397,7 +405,7 @@ Value *ReturnStatementAST::createIR(Codegen &context, bool needPrintIR)
   if (valueType != expectedType) {
     if (!context.isTypeConversionPossible(valueType, expectedType))
     {
-      std::cout << "[AST] return value type " << context.print(valueType)
+      std::cout << "[AST] Function " << fnName << ": return value type " << context.print(valueType)
         << " can not convert to expected type" << context.print(expectedType) << std::endl;
       Expr->pp();
       return nullptr;
@@ -573,10 +581,9 @@ llvm::Type *CallExprAST::typeOf(Codegen &context)
   return nullptr;
 }
 
-llvm::Type *BlockExprAST::typeOf(Codegen &context)
+llvm::Type *FunctionBlockAST::typeOf(Codegen &context)
 {
-  StatementAST *last = Statements.back();
-  return last->typeOf(context);
+  return ReturnStmt.typeOf(context);
 }
 
 llvm::Type *ReturnStatementAST::typeOf(Codegen &context)
@@ -598,6 +605,13 @@ bool BlockExprAST::typeCheck(Codegen &context)
       break;
   }
   logTypecheck("block", result);
+  return result;
+}
+
+bool FunctionBlockAST::typeCheck(Codegen &context)
+{
+  bool result = ReturnStmt.typeCheck(context) && (!Block || Block->typeCheck(context));
+  logTypecheck("function block", result);
   return result;
 }
 

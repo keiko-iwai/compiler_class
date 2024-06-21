@@ -42,6 +42,7 @@ class StatementAST : public NodeAST
 class StatementAST;
 class VarDeclExprAST;
 class FunctionDeclarationAST;
+class ReturnStatementAST;
 
 typedef std::vector<StatementAST *> StatementList;
 typedef std::vector<ExprAST *> ExpressionList;
@@ -53,7 +54,7 @@ class BlockExprAST : public ExprAST
 public:
   StatementList Statements;
   llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
-  llvm::Type *typeOf(Codegen &context) override;
+  bool typeCheck(Codegen &context) override;
 
   void pp() override
   {
@@ -64,6 +65,20 @@ public:
       (**it).pp();
     }
   }
+};
+
+class FunctionBlockAST : public ExprAST
+{
+public:
+  BlockExprAST *Block;
+  ReturnStatementAST &ReturnStmt;
+
+  FunctionBlockAST(BlockExprAST *Block, ReturnStatementAST &ReturnStmt)
+    : Block(Block), ReturnStmt(ReturnStmt) { }
+  FunctionBlockAST(ReturnStatementAST &ReturnStmt) : ReturnStmt(ReturnStmt) { Block = nullptr; }
+
+  llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
+  llvm::Type *typeOf(Codegen &context) override;
   bool typeCheck(Codegen &context) override;
 };
 
@@ -249,11 +264,12 @@ public:
   const IdentifierExprAST &TypeName;
   const IdentifierExprAST &Name;
   VariableList Arguments;
-  BlockExprAST &Block;
+  FunctionBlockAST &Block;
   FunctionDeclarationAST(const IdentifierExprAST &TypeName,
                          const IdentifierExprAST &Name,
                          const VariableList &Arguments,
-                         BlockExprAST &Block) : TypeName(TypeName), Name(Name), Arguments(Arguments), Block(Block) {}
+                         FunctionBlockAST &Block)
+    : TypeName(TypeName), Name(Name), Arguments(Arguments), Block(Block) {}
   llvm::Value *createIR(Codegen &context, bool needPrintIR = false) override;
   bool typeCheck(Codegen &context) override;
   llvm::Type *getArgumentType(Codegen &context, int idx);
