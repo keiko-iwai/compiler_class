@@ -346,7 +346,7 @@ Value *CallExprAST::createIR(Codegen &context, bool needPrintIR)
   if (!function)
   {
     std::cerr << "[AST] Function " << Name.get() << " not found" << std::endl;
-    return nullptr;
+    exit(1);
   }
   FunctionType *fnType = function->getFunctionType();
 
