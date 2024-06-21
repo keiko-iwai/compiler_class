@@ -94,11 +94,15 @@ Value *ExpressionStatementAST::createIR(Codegen &context, bool needPrintIR)
 
 Value *VarDeclExprAST::createIR(Codegen &context, bool needPrintIR)
 {
-  logCodegen("variable declaration " + Name.get());
+  std::string name = Name.get();
+  logCodegen("variable declaration " + name);
   CodegenBlock *TheBlock = context.GeneratingBlocks.top();
   AllocaInst *Alloca = context.createBlockAlloca(
-      TheBlock->block, context.stringTypeToLLVM(TypeName), Name.get().c_str());
-  TheBlock->locals[Name.get()] = Alloca;
+      TheBlock->block, context.stringTypeToLLVM(TypeName), name.c_str());
+  TheBlock->locals[name] = Alloca;
+
+  NameTable *Names = context.NameTypesByBlock.back();
+  (*Names)[name] = context.stringTypeToLLVM(TypeName);
 
   if (AssignmentExpr)
   {
@@ -523,7 +527,7 @@ llvm::Type *IdentifierExprAST::typeOf(Codegen &context)
     if (type)
       return type;
   }
-  std::cerr << "[AST] Unknown variable " << Name << std::endl;
+  std::cerr << "[AST] typeOf: unknown variable " << Name << std::endl;
   return type;
 }
 
