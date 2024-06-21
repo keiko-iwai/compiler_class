@@ -19,4 +19,10 @@ int solve(double a, double b, double c) {
   return 0;
 }
 
-solve(1.0, -5.0, 5.0);
+print("A = ");
+double a = readd();
+print("B = ");
+double b = readd();
+print("C = ");
+double c = readd();
+solve(a, b, c);
