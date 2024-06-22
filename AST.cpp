@@ -326,6 +326,7 @@ Value *FunctionDeclarationAST::createIR(Codegen &context, bool needPrintIR)
     RetVal = context.createTypeCast(context.Builder, RetVal, returnType);
   }
 
+  context.optimize(TheFunction);
   verifyFunction(*TheFunction);
 
   if (needPrintIR)

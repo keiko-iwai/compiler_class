@@ -201,6 +201,11 @@ void Codegen::writeObjFile(BlockExprAST &mainBlock, std::string optOutputFile)
   std::cout << "Wrote " << Filename << "\n";
 }
 
+void Codegen::optimize(llvm::Function *TheFunction)
+{
+  TheFPM->run(*TheFunction, *TheFAM);
+}
+
 /* Returns an LLVM type based on the identifier */
 llvm::Type *Codegen::stringTypeToLLVM(const IdentifierExprAST &type)
 {

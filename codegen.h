@@ -103,6 +103,7 @@ public:
   void generateCode(BlockExprAST &block, bool withOptimization, bool needPrintIR, std::string outputFile);
   void runCode(std::string inputFileName);
   void writeObjFile(BlockExprAST &block, std::string optOutputFile);
+  void optimize(llvm::Function *TheFunction);
 
   /* code generation functions */
   AllocaInst *createBlockAlloca(BasicBlock *BB, llvm::Type *type, const std::string &VarName);
