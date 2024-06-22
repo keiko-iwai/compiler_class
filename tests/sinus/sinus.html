@@ -1,0 +1,41 @@
+<html>
+<head>
+<script type="text/javascript">
+
+  function member_n(s_n_prev, x, member_prev, n_prev) {
+    var factor = 2 * n_prev;
+    return (-1) * member_prev * x * x / (factor * (factor + 1));
+  }
+
+  function sin_series(arg, eps) {
+    var s = arg;
+    var n = 1;
+    var x_n;
+    for (x_n = arg; Math.abs(x_n) > eps; n = n + 1) {
+      x_n = member_n(s, arg, x_n, n);
+      s = s + x_n;
+      //console.log(`"x_${n} = ${x_n}, s=${s}"`);
+    }
+    return s;
+  }
+
+  console.time('execution');
+  let eps = 0.0001;
+  console.log(`epsilon = ${eps}`);
+  let arg = 17.0;
+  var sum;
+
+  var i = 0;
+  for (i = 0; i < 10000000; i = i+1) {
+    sum = sin_series(arg, eps);
+  }
+  console.log(`Answer: sin(${arg}) = ${sum}, eps = ${eps}`);
+  console.timeEnd('execution');
+</script>
+</head>
+
+<body>
+
+<p>See console log</p>
+
+</body>
